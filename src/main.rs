@@ -4,7 +4,7 @@ use fltk::{
     group::Pack,
     input::Input,
     output::Output,
-    prelude::{DisplayExt, GroupExt, InputExt, WidgetBase, WidgetExt},
+    prelude::{DisplayExt, GroupExt, InputExt, WidgetExt},
     text::{TextBuffer, TextDisplay},
     window::Window,
 };
@@ -12,7 +12,7 @@ use std::{collections::VecDeque, convert::TryFrom};
 
 mod numbers;
 
-use numbers::Value;
+use numbers::{Radix, Value};
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -72,6 +72,9 @@ fn main() {
     input.set_trigger(CallbackTrigger::EnterKey);
     input.emit(s, Message::Input);
 
+    let radix = Radix::Decimal;
+    let rational = true;
+
     while app.wait() {
         if let Some(val) = r.recv() {
             match val {
@@ -95,6 +98,21 @@ fn main() {
                                 stacks[0].push(a);
                                 stacks[0].push(b);
                                 Return::Ok
+                            } else {
+                                Return::Noop
+                            }
+                        }
+                        "mod" => {
+                            if stacks[0].len() > 1 {
+                                let a = stacks[0].pop().unwrap();
+                                let b = stacks[0].pop().unwrap();
+                                match b.try_modulo(&a) {
+                                    Ok(c) => {
+                                        stacks[0].push(c);
+                                        Return::Ok
+                                    }
+                                    Err(e) => Return::Err(e),
+                                }
                             } else {
                                 Return::Noop
                             }
@@ -204,7 +222,7 @@ fn main() {
                                 &stacks[0]
                                     .iter()
                                     .rev()
-                                    .map(|s| s.to_string())
+                                    .map(|s| s.to_string_radix(radix, rational))
                                     .collect::<Vec<_>>()
                                     .join("\n"),
                             );
