@@ -1,5 +1,10 @@
-use rug::{float::Special, Complex, Float, Integer, Rational};
-use std::{fmt, ops};
+use rug::{float::Special, Complex, Float, Rational};
+use std::{
+    convert::{From, TryFrom},
+    fmt, ops,
+};
+
+const FLOAT_PRESITION: u32 = 53;
 
 #[derive(Debug, Clone)]
 pub enum ScalerValue {
@@ -21,22 +26,89 @@ pub enum Value {
     Matrix(Matrix),
 }
 
-impl Value {
-    pub fn parse(value: &str) -> Result<Self, String> {
+impl From<Rational> for Value {
+    fn from(x: Rational) -> Self {
+        Value::Int(x)
+    }
+}
+
+impl From<Float> for Value {
+    fn from(x: Float) -> Self {
+        if x.is_integer() {
+            Value::Int(Rational::from(x.to_integer().unwrap()))
+        } else {
+            Value::Float(x)
+        }
+    }
+}
+
+impl From<Complex> for Value {
+    fn from(x: Complex) -> Self {
+        if x.imag().is_zero() {
+            Value::from(x.real().clone())
+        } else {
+            Value::Complex(x)
+        }
+    }
+}
+
+impl TryFrom<&str> for Value {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.contains("(") {
             let v = Complex::parse(value).map_err(|e| e.to_string())?;
-            Ok(Value::Complex(Complex::with_val(53, v)))
+            let c = Complex::with_val(FLOAT_PRESITION, v);
+            Ok(Value::from(c))
+        } else if value.contains("[") {
+            Err(format!("Matrix NYI"))
         } else if value.contains(".") {
             let v = Float::parse(value).map_err(|e| e.to_string())?;
-            let f = Float::with_val(53, v);
-            Ok(Value::Float(f))
+            let f = Float::with_val(FLOAT_PRESITION, v);
+            Ok(Value::from(f))
         } else if let Ok(v) = Rational::parse(value) {
             Ok(Value::Int(Rational::from(v)))
-        } else if let Ok(v) = Float::parse(value) {
-            Ok(Value::Float(Float::with_val(53, v)))
         } else {
             Err(format!("Unknown value: {}", value))
         }
+    }
+}
+
+impl Value {
+    pub fn modulo(&self, b: &Value) -> Option<Value> {
+        None
+    }
+    pub fn try_rshift(&self, b: &Value) -> Result<Self, String> {
+        if let (Value::Int(a), Value::Int(b)) = (self, b) {
+            if b.denom().to_u32() == Some(1) {
+                if let Some(b) = b.numer().to_u32() {
+                    return Ok(Value::from(a.clone() >> b));
+                }
+            }
+        } else if let (Value::Float(a), Value::Int(b)) = (self, b) {
+            if b.denom().to_u32() == Some(1) {
+                if let Some(b) = b.numer().to_u32() {
+                    return Ok(Value::from(a.clone() >> b));
+                }
+            }
+        }
+        Err(format!("{:?} >> {:?} is not REAL >> INTEGER(u32)", self, b))
+    }
+    pub fn try_lshift(&self, b: &Value) -> Result<Self, String> {
+        if let (Value::Int(a), Value::Int(b)) = (self, b) {
+            if b.denom().to_u32() == Some(1) {
+                if let Some(b) = b.numer().to_u32() {
+                    return Ok(Value::from(a.clone() << b));
+                }
+            }
+        } else if let (Value::Float(a), Value::Int(b)) = (self, b) {
+            if b.denom().to_u32() == Some(1) {
+                if let Some(b) = b.numer().to_u32() {
+                    return Ok(Value::from(a.clone() << b));
+                }
+            }
+        }
+        Err(format!("{:?} << {:?} is not REAL >> INTEGER(u32)", self, b))
     }
 }
 
@@ -66,17 +138,17 @@ impl ops::Add<Value> for Value {
 
     fn add(self, other: Self) -> Self {
         match (self, other) {
-            (Value::Int(a), Value::Int(b)) => Value::Int(a + b),
-            (Value::Int(a), Value::Float(b)) => Value::Float(b + a),
-            (Value::Int(a), Value::Complex(b)) => Value::Complex(a + b),
+            (Value::Int(a), Value::Int(b)) => Value::from(a + b),
+            (Value::Int(a), Value::Float(b)) => Value::from(a + b),
+            (Value::Int(a), Value::Complex(b)) => Value::from(a + b),
 
-            (Value::Float(a), Value::Int(b)) => Value::Float(a + b),
-            (Value::Float(a), Value::Float(b)) => Value::Float(a + b),
-            (Value::Float(a), Value::Complex(b)) => Value::Complex(a + b),
+            (Value::Float(a), Value::Int(b)) => Value::from(a + b),
+            (Value::Float(a), Value::Float(b)) => Value::from(a + b),
+            (Value::Float(a), Value::Complex(b)) => Value::from(a + b),
 
-            (Value::Complex(a), Value::Int(b)) => Value::Complex(a + b),
-            (Value::Complex(a), Value::Float(b)) => Value::Complex(a + b),
-            (Value::Complex(a), Value::Complex(b)) => Value::Complex(a + b),
+            (Value::Complex(a), Value::Int(b)) => Value::from(a + b),
+            (Value::Complex(a), Value::Float(b)) => Value::from(a + b),
+            (Value::Complex(a), Value::Complex(b)) => Value::from(a + b),
 
             _ => Value::Float(Float::with_val(1, Special::Nan)),
         }
@@ -88,17 +160,17 @@ impl ops::Sub<Value> for Value {
 
     fn sub(self, other: Self) -> Self {
         match (self, other) {
-            (Value::Int(a), Value::Int(b)) => Value::Int(a - b),
-            (Value::Int(a), Value::Float(b)) => Value::Float(a - b),
-            (Value::Int(a), Value::Complex(b)) => Value::Complex(a - b),
+            (Value::Int(a), Value::Int(b)) => Value::from(a - b),
+            (Value::Int(a), Value::Float(b)) => Value::from(a - b),
+            (Value::Int(a), Value::Complex(b)) => Value::from(a - b),
 
-            (Value::Float(a), Value::Int(b)) => Value::Float(a - b),
-            (Value::Float(a), Value::Float(b)) => Value::Float(a - b),
-            (Value::Float(a), Value::Complex(b)) => Value::Complex(a - b),
+            (Value::Float(a), Value::Int(b)) => Value::from(a - b),
+            (Value::Float(a), Value::Float(b)) => Value::from(a - b),
+            (Value::Float(a), Value::Complex(b)) => Value::from(a - b),
 
-            (Value::Complex(a), Value::Int(b)) => Value::Complex(a - b),
-            (Value::Complex(a), Value::Float(b)) => Value::Complex(a - b),
-            (Value::Complex(a), Value::Complex(b)) => Value::Complex(a - b),
+            (Value::Complex(a), Value::Int(b)) => Value::from(a - b),
+            (Value::Complex(a), Value::Float(b)) => Value::from(a - b),
+            (Value::Complex(a), Value::Complex(b)) => Value::from(a - b),
 
             _ => Value::Float(Float::with_val(1, Special::Nan)),
         }
@@ -110,17 +182,17 @@ impl ops::Mul<Value> for Value {
 
     fn mul(self, other: Self) -> Self {
         match (self, other) {
-            (Value::Int(a), Value::Int(b)) => Value::Int(a * b),
-            (Value::Int(a), Value::Float(b)) => Value::Float(b * a),
-            (Value::Int(a), Value::Complex(b)) => Value::Complex(a * b),
+            (Value::Int(a), Value::Int(b)) => Value::from(a * b),
+            (Value::Int(a), Value::Float(b)) => Value::from(b * a),
+            (Value::Int(a), Value::Complex(b)) => Value::from(a * b),
 
-            (Value::Float(a), Value::Int(b)) => Value::Float(a * b),
-            (Value::Float(a), Value::Float(b)) => Value::Float(a * b),
-            (Value::Float(a), Value::Complex(b)) => Value::Complex(a * b),
+            (Value::Float(a), Value::Int(b)) => Value::from(a * b),
+            (Value::Float(a), Value::Float(b)) => Value::from(a * b),
+            (Value::Float(a), Value::Complex(b)) => Value::from(a * b),
 
-            (Value::Complex(a), Value::Int(b)) => Value::Complex(a * b),
-            (Value::Complex(a), Value::Float(b)) => Value::Complex(a * b),
-            (Value::Complex(a), Value::Complex(b)) => Value::Complex(a * b),
+            (Value::Complex(a), Value::Int(b)) => Value::from(a * b),
+            (Value::Complex(a), Value::Float(b)) => Value::from(a * b),
+            (Value::Complex(a), Value::Complex(b)) => Value::from(a * b),
 
             _ => Value::Float(Float::with_val(1, Special::Nan)),
         }
@@ -132,20 +204,20 @@ impl ops::Div<Value> for Value {
 
     fn div(self, other: Self) -> Self {
         match (self, other) {
-            (Value::Int(a), Value::Int(b)) => Value::Int(a / b),
-            (Value::Int(a), Value::Float(b)) => Value::Float(a / b),
+            (Value::Int(a), Value::Int(b)) => Value::from(a / b),
+            (Value::Int(a), Value::Float(b)) => Value::from(a / b),
             (Value::Int(a), Value::Complex(b)) => {
                 let f: Float = a * Float::with_val(53, 1.0);
-                Value::Complex(f / b)
+                Value::from(f / b)
             }
 
-            (Value::Float(a), Value::Int(b)) => Value::Float(a / b),
-            (Value::Float(a), Value::Float(b)) => Value::Float(a / b),
-            (Value::Float(a), Value::Complex(b)) => Value::Complex(a / b),
+            (Value::Float(a), Value::Int(b)) => Value::from(a / b),
+            (Value::Float(a), Value::Float(b)) => Value::from(a / b),
+            (Value::Float(a), Value::Complex(b)) => Value::from(a / b),
 
-            (Value::Complex(a), Value::Int(b)) => Value::Complex(a / b),
-            (Value::Complex(a), Value::Float(b)) => Value::Complex(a / b),
-            (Value::Complex(a), Value::Complex(b)) => Value::Complex(a / b),
+            (Value::Complex(a), Value::Int(b)) => Value::from(a / b),
+            (Value::Complex(a), Value::Float(b)) => Value::from(a / b),
+            (Value::Complex(a), Value::Complex(b)) => Value::from(a / b),
 
             _ => Value::Float(Float::with_val(1, Special::Nan)),
         }

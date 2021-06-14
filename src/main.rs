@@ -8,7 +8,7 @@ use fltk::{
     text::{TextBuffer, TextDisplay},
     window::Window,
 };
-use std::collections::VecDeque;
+use std::{collections::VecDeque, convert::TryFrom};
 
 mod numbers;
 
@@ -81,8 +81,12 @@ fn main() {
 
                     let rv = match input.value().as_str() {
                         "drop" | "pop" | "del" => {
-                            stacks[0].pop();
-                            Return::Ok
+                            if stacks[0].len() > 0 {
+                                stacks[0].pop();
+                                Return::Ok
+                            } else {
+                                Return::Noop
+                            }
                         }
                         "sw" | "swap" => {
                             if stacks[0].len() > 1 {
@@ -148,7 +152,37 @@ fn main() {
                                 Return::Noop
                             }
                         }
-                        v => match Value::parse(v) {
+                        "<<" => {
+                            if stacks[0].len() > 1 {
+                                let a = stacks[0].pop().unwrap();
+                                let b = stacks[0].pop().unwrap();
+                                match b.try_lshift(&a) {
+                                    Ok(c) => {
+                                        stacks[0].push(c);
+                                        Return::Ok
+                                    }
+                                    Err(e) => Return::Err(e),
+                                }
+                            } else {
+                                Return::Noop
+                            }
+                        }
+                        ">>" => {
+                            if stacks[0].len() > 1 {
+                                let a = stacks[0].pop().unwrap();
+                                let b = stacks[0].pop().unwrap();
+                                match b.try_rshift(&a) {
+                                    Ok(c) => {
+                                        stacks[0].push(c);
+                                        Return::Ok
+                                    }
+                                    Err(e) => Return::Err(e),
+                                }
+                            } else {
+                                Return::Noop
+                            }
+                        }
+                        v => match Value::try_from(v) {
                             Ok(v) => {
                                 stacks[0].push(v);
                                 Return::Ok
