@@ -1,10 +1,11 @@
 use fltk::{
     app,
-    enums::{Align, CallbackTrigger, Color, FrameType},
+    enums::{Align, CallbackTrigger, Color, FrameType, Shortcut},
     group::Pack,
     input::Input,
+    menu::{MenuFlag, SysMenuBar},
     output::Output,
-    prelude::{DisplayExt, GroupExt, InputExt, WidgetExt},
+    prelude::{DisplayExt, GroupExt, InputExt, MenuExt, WidgetExt},
     text::{TextBuffer, TextDisplay},
     window::Window,
 };
@@ -14,10 +15,12 @@ mod numbers;
 
 use numbers::{Radix, Value};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 enum Message {
+    Clear,
     Input,
-    //    Number(i32),
+    Radix(Radix),
+    Quit,
 }
 
 enum Return {
@@ -34,6 +37,8 @@ fn main() {
     app::background(0x42, 0x42, 0x42);
     app::background2(0x1b, 0x1b, 0x1b);
 
+    let (s, r) = app::channel::<Message>();
+
     let mut stacks: VecDeque<Vec<Value>> = VecDeque::with_capacity(stack_undo);
     stacks.push_front(vec![]);
 
@@ -41,11 +46,58 @@ fn main() {
     let out_h = 480;
     let in_h = 20;
     let err_h = 20;
-    let win_h = out_h + in_h + err_h;
+    let win_h = out_h + in_h + in_h + err_h;
 
     let mut wind = Window::default().with_label("grpn").with_size(width, win_h);
 
     let pack = Pack::default().with_size(width, win_h);
+
+    let mut menu = SysMenuBar::default().with_size(width, in_h);
+    menu.add_emit(
+        "File/Clear\t",
+        Shortcut::None,
+        MenuFlag::Normal,
+        s,
+        Message::Clear,
+    );
+    menu.add_emit(
+        "File/Quit\t",
+        Shortcut::Ctrl | 'q',
+        MenuFlag::Normal,
+        s,
+        Message::Quit,
+    );
+    menu.add_emit(
+        "Radix/Decimal\t",
+        Shortcut::Ctrl | 'd',
+        MenuFlag::Radio,
+        s,
+        Message::Radix(Radix::Decimal),
+    );
+    menu.add_emit(
+        "Radix/Hexadecimal\t",
+        Shortcut::Ctrl | 'x',
+        MenuFlag::Radio,
+        s,
+        Message::Radix(Radix::Hex),
+    );
+    menu.add_emit(
+        "Radix/Octal\t",
+        Shortcut::Ctrl | 'o',
+        MenuFlag::Radio,
+        s,
+        Message::Radix(Radix::Octal),
+    );
+    menu.add_emit(
+        "Radix/Binary\t",
+        Shortcut::Ctrl | 'b',
+        MenuFlag::Radio,
+        s,
+        Message::Radix(Radix::Binary),
+    );
+    if let Some(mut item) = menu.find_item("Radix/Decimal\t") {
+        item.set();
+    }
 
     let error = Output::default().with_size(width, err_h);
 
@@ -60,26 +112,28 @@ fn main() {
 
     let mut input = Input::default().with_size(width, in_h);
 
+    pack.resizable(&output_td);
+
     pack.end();
 
     app::set_focus(&input);
-    //wind.make_resizable(true);
+    wind.make_resizable(true);
+    wind.resizable(&pack);
     wind.end();
     wind.show();
-
-    let (s, r) = app::channel::<Message>();
 
     input.set_trigger(CallbackTrigger::EnterKey);
     input.emit(s, Message::Input);
 
-    let radix = Radix::Decimal;
+    let mut radix = Radix::Decimal;
     let rational = true;
 
     while app.wait() {
         if let Some(val) = r.recv() {
+            error.set_value("");
+            let mut need_redisplay = false;
             match val {
                 Message::Input => {
-                    error.set_value("");
                     stacks.push_front(stacks[0].clone());
 
                     let rv = match input.value().as_str() {
@@ -125,6 +179,11 @@ fn main() {
                         "q" | "quit" => {
                             app::quit();
                             Return::Noop
+                        }
+                        "clear" => {
+                            stacks.clear();
+                            stacks.push_front(vec![]);
+                            Return::Ok
                         }
                         "+" => {
                             if stacks[0].len() > 1 {
@@ -216,16 +275,8 @@ fn main() {
                             if stacks.len() == stack_undo {
                                 stacks.pop_back();
                             }
-                            let mut output = output_td.buffer().unwrap();
+                            need_redisplay = true;
                             println!("writing: {:?}", stacks[0]);
-                            output.set_text(
-                                &stacks[0]
-                                    .iter()
-                                    .rev()
-                                    .map(|s| s.to_string_radix(radix, rational))
-                                    .collect::<Vec<_>>()
-                                    .join("\n"),
-                            );
                         }
                         Return::Noop => {
                             stacks.pop_front();
@@ -238,6 +289,29 @@ fn main() {
 
                     //println!("Max rows: {}", output.height()/output.text_size())
                 }
+                Message::Radix(r) => {
+                    if r != radix {
+                        radix = r;
+                        need_redisplay = true;
+                    }
+                }
+                Message::Clear => {
+                    stacks.clear();
+                    stacks.push_front(vec![]);
+                    need_redisplay = true;
+                }
+                Message::Quit => app::quit(),
+            }
+            if need_redisplay {
+                let mut output = output_td.buffer().unwrap();
+                output.set_text(
+                    &stacks[0]
+                        .iter()
+                        .rev()
+                        .map(|s| s.to_string_radix(radix, rational))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                );
             }
         }
     }
