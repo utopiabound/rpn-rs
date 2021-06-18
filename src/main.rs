@@ -137,6 +137,21 @@ fn main() {
                     stacks.push_front(stacks[0].clone());
 
                     let rv = match input.value().as_str() {
+                        "q" | "quit" => {
+                            app::quit();
+                            Return::Noop
+                        }
+                        // Stack Operations
+                        "undo" | "u" => {
+                            stacks.pop_front();
+                            stacks.pop_front();
+                            Return::Ok
+                        }
+                        "clear" => {
+                            stacks.clear();
+                            stacks.push_front(vec![]);
+                            Return::Ok
+                        }
                         "drop" | "pop" | "del" => {
                             if stacks[0].len() > 0 {
                                 stacks[0].pop();
@@ -156,6 +171,7 @@ fn main() {
                                 Return::Noop
                             }
                         }
+                        // Arithmatic Operations
                         "mod" => {
                             if stacks[0].len() > 1 {
                                 let a = stacks[0].pop().unwrap();
@@ -171,19 +187,38 @@ fn main() {
                                 Return::Noop
                             }
                         }
-                        "undo" | "u" => {
-                            stacks.pop_front();
-                            stacks.pop_front();
-                            Return::Ok
+                        "sqrt" => {
+                            if let Some(a) = stacks[0].pop() {
+                                let c = a.sqrt();
+                                stacks[0].push(c);
+                                Return::Ok
+                            } else {
+                                Return::Noop
+                            }
                         }
-                        "q" | "quit" => {
-                            app::quit();
-                            Return::Noop
+                        "sqr" => {
+                            if let Some(a) = stacks[0].pop() {
+                                let c = a.clone() * a;
+                                stacks[0].push(c);
+                                Return::Ok
+                            } else {
+                                Return::Noop
+                            }
                         }
-                        "clear" => {
-                            stacks.clear();
-                            stacks.push_front(vec![]);
-                            Return::Ok
+                        "pow" => {
+                            if stacks[0].len() > 1 {
+                                let a = stacks[0].pop().unwrap();
+                                let b = stacks[0].pop().unwrap();
+                                match b.try_pow(a) {
+                                    Ok(c) => {
+                                        stacks[0].push(c);
+                                        Return::Ok
+                                    }
+                                    Err(e) => Return::Err(e),
+                                }
+                            } else {
+                                Return::Noop
+                            }
                         }
                         "+" => {
                             if stacks[0].len() > 1 {
