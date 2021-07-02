@@ -3,6 +3,11 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
+use rpn_rs::{
+    numbers::{Radix, Value},
+    stack::{Return, StackOps},
+};
+
 use fltk::{
     app,
     enums::{Align, CallbackTrigger, Color, Event, FrameType, Shortcut},
@@ -14,11 +19,8 @@ use fltk::{
     text::{TextBuffer, TextDisplay},
     window::Window,
 };
-use std::{collections::VecDeque, convert::TryFrom};
-
-mod numbers;
-
-use numbers::{Radix, Value};
+use std::collections::VecDeque;
+use std::convert::TryFrom;
 
 #[derive(Debug, Copy, Clone)]
 enum Message {
@@ -26,12 +28,6 @@ enum Message {
     Input,
     Radix(Radix),
     Quit,
-}
-
-enum Return {
-    Ok,
-    Noop,
-    Err(String),
 }
 
 fn main() {
@@ -53,7 +49,9 @@ fn main() {
     let err_h = 20;
     let win_h = out_h + in_h + in_h + err_h;
 
-    let mut wind = Window::default().with_label("rpn-rs").with_size(width, win_h);
+    let mut wind = Window::default()
+        .with_label("rpn-rs")
+        .with_size(width, win_h);
 
     let pack = Pack::default().with_size(width, win_h);
 
@@ -121,7 +119,7 @@ fn main() {
     output_td.handle(|s, e| {
         if e == Event::Focus {
             if let Some(p) = s.parent() {
-                if let Some(mut c) = p.child(p.children()-1) {
+                if let Some(mut c) = p.child(p.children() - 1) {
                     let _ = c.take_focus();
                     return true;
                 }
@@ -171,147 +169,25 @@ fn main() {
                             Return::Ok
                         }
                         "drop" | "pop" | "del" => {
-                            if stacks[0].len() > 0 {
-                                stacks[0].pop();
+                            if stacks[0].pop().is_some() {
                                 Return::Ok
                             } else {
                                 Return::Noop
                             }
                         }
-                        "sw" | "swap" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                stacks[0].push(a);
-                                stacks[0].push(b);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
+                        "sw" | "swap" => stacks[0].binary2(|a, b| (b, a)),
+                        "dup" | "" => stacks[0].unary2(|a| (a.clone(), a)),
                         // Arithmatic Operations
-                        "mod" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                match b.try_modulo(&a) {
-                                    Ok(c) => {
-                                        stacks[0].push(c);
-                                        Return::Ok
-                                    }
-                                    Err(e) => Return::Err(e),
-                                }
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "sqrt" => {
-                            if let Some(a) = stacks[0].pop() {
-                                let c = a.sqrt();
-                                stacks[0].push(c);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "sqr" => {
-                            if let Some(a) = stacks[0].pop() {
-                                let c = a.clone() * a;
-                                stacks[0].push(c);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "pow" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                match b.try_pow(a) {
-                                    Ok(c) => {
-                                        stacks[0].push(c);
-                                        Return::Ok
-                                    }
-                                    Err(e) => Return::Err(e),
-                                }
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "+" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                let c = b + a;
-                                stacks[0].push(c);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "*" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                let c = b * a;
-                                stacks[0].push(c);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "-" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                let c = b - a;
-                                stacks[0].push(c);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "/" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                let c = b / a;
-                                stacks[0].push(c);
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "<<" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                match b.try_lshift(&a) {
-                                    Ok(c) => {
-                                        stacks[0].push(c);
-                                        Return::Ok
-                                    }
-                                    Err(e) => Return::Err(e),
-                                }
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        ">>" => {
-                            if stacks[0].len() > 1 {
-                                let a = stacks[0].pop().unwrap();
-                                let b = stacks[0].pop().unwrap();
-                                match b.try_rshift(&a) {
-                                    Ok(c) => {
-                                        stacks[0].push(c);
-                                        Return::Ok
-                                    }
-                                    Err(e) => Return::Err(e),
-                                }
-                            } else {
-                                Return::Noop
-                            }
-                        }
+                        "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
+                        "sqrt" => stacks[0].unary(|a| a.sqrt()),
+                        "sqr" => stacks[0].unary(|a| a.clone() * a),
+                        "pow" => stacks[0].try_binary(|a, b| a.try_pow(b)),
+                        "+" => stacks[0].binary(|a, b| a + b),
+                        "*" => stacks[0].binary(|a, b| a * b),
+                        "-" => stacks[0].binary(|a, b| a - b),
+                        "/" => stacks[0].binary(|a, b| a / b),
+                        "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
+                        ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
                         v => match Value::try_from(v) {
                             Ok(v) => {
                                 stacks[0].push(v);
