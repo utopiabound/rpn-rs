@@ -94,6 +94,7 @@ impl From<Complex> for Scaler {
 impl TryFrom<&str> for Value {
     type Error = String;
 
+    // @@ Add radix parsing
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.contains("(") {
             let v = Complex::parse(value).map_err(|e| e.to_string())?;

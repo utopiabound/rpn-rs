@@ -1,11 +1,11 @@
 use fltk::{
     app,
-    enums::{Align, CallbackTrigger, Color, FrameType, Shortcut},
+    enums::{Align, CallbackTrigger, Color, Event, FrameType, Shortcut},
     group::Pack,
     input::Input,
     menu::{MenuFlag, SysMenuBar},
     output::Output,
-    prelude::{DisplayExt, GroupExt, InputExt, MenuExt, WidgetExt},
+    prelude::{DisplayExt, GroupExt, InputExt, MenuExt, WidgetBase, WidgetExt},
     text::{TextBuffer, TextDisplay},
     window::Window,
 };
@@ -111,6 +111,19 @@ fn main() {
     output_td.set_linenumber_width(30);
 
     let mut input = Input::default().with_size(width, in_h);
+
+    // push focus from Text display to input
+    output_td.handle(|s, e| {
+        if e == Event::Focus {
+            if let Some(p) = s.parent() {
+                if let Some(mut c) = p.child(p.children()-1) {
+                    let _ = c.take_focus();
+                    return true;
+                }
+            }
+        }
+        false
+    });
 
     pack.resizable(&output_td);
 
