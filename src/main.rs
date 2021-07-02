@@ -48,7 +48,7 @@ fn main() {
     let err_h = 20;
     let win_h = out_h + in_h + in_h + err_h;
 
-    let mut wind = Window::default().with_label("grpn").with_size(width, win_h);
+    let mut wind = Window::default().with_label("rpn-rs").with_size(width, win_h);
 
     let pack = Pack::default().with_size(width, win_h);
 

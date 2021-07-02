@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=RPN-rs Calculator
+GenericName=Calculator
+Comment=A reverse polish notation calculator
+Exec=rpn-rs
+Icon=rpn-rs
+Type=Application
+Categories=Calculator;Utility;
