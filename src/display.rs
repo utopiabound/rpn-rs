@@ -17,6 +17,12 @@ pub struct StackOutput {
     data: Rc<RefCell<Vec<Value>>>,
 }
 
+const ROW_HEIGHT: i32 = 28;
+
+fn row_count(h: i32) -> i32 {
+    1 + (h / ROW_HEIGHT)
+}
+
 impl StackOutput {
     pub fn new(width: i32, height: i32) -> Self {
         let mut table = table::Table::default()
@@ -25,15 +31,16 @@ impl StackOutput {
         let data: Rc<RefCell<Vec<Value>>> = Rc::from(RefCell::from(vec![]));
         let radix = Rc::from(RefCell::from(Radix::Decimal));
         let rational = Rc::from(RefCell::from(true));
-        let rows = Rc::from(RefCell::from(height/32));
+        let rows = Rc::from(RefCell::from(row_count(height)));
 
-        table.set_row_height_all(32);
+        table.set_row_height_all(ROW_HEIGHT);
         table.set_rows(*rows.borrow());
         table.set_row_header(true);
         table.set_row_resize(false);
-        table.set_cols(1);
+        table.set_cols(2);
         table.set_col_header(false);
-        table.set_col_width(0, width - (table.row_header_width()+4));
+        table.set_col_width(0, width - 10 - (table.row_header_width()+4));
+        table.set_col_width(1, 10);
         table.set_col_resize(false);
         table.end();
 
@@ -45,17 +52,33 @@ impl StackOutput {
         let rows_c = rows.clone();
 
         // push focus from Text display to input
-        table.handle(|s, e| {
-            if e == enums::Event::Focus {
-                if let Some(p) = s.parent() {
-                    if let Some(mut c) = p.child(p.children() - 1) {
-                        let _ = c.take_focus();
-                        return true;
+        table.handle(move |s, e| {
+            match e {
+                enums::Event::Focus => {
+                    if let Some(p) = s.parent() {
+                        if let Some(mut c) = p.child(p.children() - 1) {
+                            let _ = c.take_focus();
+                            return true;
+                        }
+                    }
+                    false
+                }
+                enums::Event::Resize => {
+                    let r = row_count(s.height());
+                    if r != s.rows() {
+                        *rows_c.borrow_mut() = r;
+                        s.set_rows(r);
+                        //println!("D: Set rows = {}", r);
+                        true
+                    } else {
+                        false
                     }
                 }
+                _ => false,
             }
-            false
         });
+
+        let rows_c = rows.clone();
 
         // Called when the table is drawn then when it's redrawn due to events
         table.draw_cell(move |t, ctx, row, col, x, y, w, h| match ctx {
@@ -65,7 +88,8 @@ impl StackOutput {
             } // Row titles
             table::TableContext::Cell => {
                 let rn = (data_c.borrow().len() as i32) - *rows_c.borrow() + row;
-                let value = if rn >= 0 {
+                //println!("ROW:{} rows={} index={}", row,  *rows_c.borrow(), rn);
+                let value = if col == 0 && rn >= 0 {
                     data_c.borrow()[rn as usize].to_string_radix(
                         *radix_c.borrow(),
                         *rational_c.borrow(),
@@ -95,7 +119,7 @@ impl StackOutput {
     fn draw_header(txt: &str, x: i32, y: i32, w: i32, h: i32) {
         draw::push_clip(x, y, w, h);
         draw::draw_box(
-            enums::FrameType::ThinUpBox,
+            enums::FrameType::FlatBox,
             x,
             y,
             w,
@@ -103,7 +127,8 @@ impl StackOutput {
             enums::Color::FrameDefault,
         );
         draw::set_draw_color(enums::Color::Black);
-        draw::draw_text2(txt, x, y, w, h, enums::Align::Center);
+        draw::set_font(enums::Font::ScreenBold, 24);
+        draw::draw_text2(txt, x, y, w, h, enums::Align::Right);
         draw::pop_clip();
     }
 
@@ -113,12 +138,13 @@ impl StackOutput {
         if selected {
             draw::set_draw_color(enums::Color::from_u32(0x00D3_D3D3));
         } else {
-            draw::set_draw_color(enums::Color::White);
+            draw::set_draw_color(enums::Color::BackGround);
         }
         draw::draw_rectf(x, y, w, h);
         draw::set_draw_color(enums::Color::Gray0);
+        draw::set_font(enums::Font::Screen, 18);
         draw::draw_text2(txt, x, y, w, h, enums::Align::Right);
-        draw::draw_rect(x, y, w, h);
+        //draw::draw_rect(x, y, w, h);
         draw::pop_clip();
     }
 

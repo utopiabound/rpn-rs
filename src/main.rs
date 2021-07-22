@@ -35,8 +35,8 @@ fn main() {
 
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
     app::set_visible_focus(false);
-    app::background(0x42, 0x42, 0x42);
-    app::background2(0x1b, 0x1b, 0x1b);
+    //app::background(0x42, 0x42, 0x42);
+    //app::background2(0x1b, 0x1b, 0x1b);
 
     let (s, r) = app::channel::<Message>();
 
