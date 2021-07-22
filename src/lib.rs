@@ -3,5 +3,6 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
+pub mod display;
 pub mod numbers;
 pub mod stack;

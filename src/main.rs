@@ -4,19 +4,19 @@
  */
 
 use rpn_rs::{
+    display::StackOutput,
     numbers::{Radix, Value},
     stack::{Return, StackOps},
 };
 
 use fltk::{
     app,
-    enums::{Align, CallbackTrigger, Color, Event, FrameType, Shortcut},
+    enums::{CallbackTrigger, Shortcut},
     group::Pack,
     input::Input,
     menu::{MenuFlag, SysMenuBar},
     output::Output,
-    prelude::{DisplayExt, GroupExt, InputExt, MenuExt, WidgetBase, WidgetExt},
-    text::{TextBuffer, TextDisplay},
+    prelude::{GroupExt, InputExt, MenuExt, WidgetExt},
     window::Window,
 };
 use std::collections::VecDeque;
@@ -102,33 +102,13 @@ fn main() {
         item.set();
     }
 
-    let error = Output::default().with_size(width, err_h);
+    let mut error = Output::default().with_size(width, err_h);
 
-    let mut output_td = TextDisplay::default().with_size(width, out_h);
-    let output = TextBuffer::default();
-    output_td.set_buffer(output);
-    output_td.set_align(Align::Right);
-    output_td.set_frame(FrameType::FlatBox);
-    output_td.set_text_color(Color::White);
-    output_td.set_text_size(24);
-    output_td.set_linenumber_width(30);
+    let mut table = StackOutput::new(width, out_h);
 
     let mut input = Input::default().with_size(width, in_h);
 
-    // push focus from Text display to input
-    output_td.handle(|s, e| {
-        if e == Event::Focus {
-            if let Some(p) = s.parent() {
-                if let Some(mut c) = p.child(p.children() - 1) {
-                    let _ = c.take_focus();
-                    return true;
-                }
-            }
-        }
-        false
-    });
-
-    pack.resizable(&output_td);
+    pack.resizable(table.table());
 
     pack.end();
 
@@ -140,9 +120,6 @@ fn main() {
 
     input.set_trigger(CallbackTrigger::EnterKey);
     input.emit(s, Message::Input);
-
-    let mut radix = Radix::Decimal;
-    let rational = true;
 
     while app.wait() {
         if let Some(val) = r.recv() {
@@ -219,10 +196,8 @@ fn main() {
                     //println!("Max rows: {}", output.height()/output.text_size())
                 }
                 Message::Radix(r) => {
-                    if r != radix {
-                        radix = r;
-                        need_redisplay = true;
-                    }
+                    table.set_radix(r);
+                    need_redisplay = true;
                 }
                 Message::Clear => {
                     stacks.clear();
@@ -232,15 +207,8 @@ fn main() {
                 Message::Quit => app::quit(),
             }
             if need_redisplay {
-                let mut output = output_td.buffer().unwrap();
-                output.set_text(
-                    &stacks[0]
-                        .iter()
-                        .rev()
-                        .map(|s| s.to_string_radix(radix, rational))
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                );
+                table.set_data(&stacks[0]);
+                table.redraw();
             }
         }
     }

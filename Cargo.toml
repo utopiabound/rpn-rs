@@ -5,5 +5,5 @@ authors = ["Nathaniel Clark <Nathaniel.Clark@misrule.us>"]
 edition = "2018"
 
 [dependencies]
-fltk = "1.0"
+fltk = "1.1"
 rug = "1.12"
