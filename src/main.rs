@@ -165,6 +165,11 @@ fn main() {
                         "/" => stacks[0].binary(|a, b| a / b),
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
+                        // Constants
+                        "i" => {
+                            stacks[0].push(Value::i());
+                            Return::Ok
+                        },
                         v => match Value::try_from(v) {
                             Ok(v) => {
                                 stacks[0].push(v);

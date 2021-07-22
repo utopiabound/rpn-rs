@@ -242,6 +242,13 @@ impl Value {
         }
         Err(format!("{:?} << {:?} is not REAL >> INTEGER(u32)", self, b))
     }
+
+    // Constants
+    pub fn i() -> Self {
+        Value::Scaler(Scaler::from(Complex::with_val(FLOAT_PRECISION, (0, 1))))
+    }
+
+
 }
 
 impl ops::Add<Value> for Value {
