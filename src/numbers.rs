@@ -3,8 +3,9 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
+use regex::Regex;
 use rug::{
-    float::Special,
+    float::{Constant, Special},
     ops::{Pow, RemRounding},
     Complex, Float, Integer, Rational,
 };
@@ -13,7 +14,7 @@ use std::{
     ops,
 };
 
-const FLOAT_PRECISION: u32 = 53;
+const FLOAT_PRECISION: u32 = 256;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Scaler {
@@ -101,20 +102,47 @@ impl TryFrom<&str> for Value {
 
     // @@ Add radix parsing
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value.contains("(") {
-            let v = Complex::parse(value).map_err(|e| e.to_string())?;
+        let radixre = Regex::new(r"0([xXoObB])(.*)").unwrap();
+
+        if value.contains(&['(', 'i'][..]) {
+            // @@ better float parsing (pi, e)
+
+            // Change "1+2i" -> "(1 2)"
+            let re = Regex::new(r"(?P<r>\d+([.]\d+)?)\s*\+\s*(?P<i>\d+([.]\d+)?)i").unwrap();
+            let value = re.replace(value, "($r $i)").into_owned();
+            // Change "3i" -> "(0 3)"
+            let re = Regex::new(r"(?P<i>\d+([.]\d+)?)i").unwrap();
+            let value = re.replace(&value, "(0 $i)").into_owned();
+
+            let v = Complex::parse(&value).map_err(|e| e.to_string())?;
             let c = Complex::with_val(FLOAT_PRECISION, v);
             Ok(Value::from(c))
         } else if value.contains("[") {
             Err(format!("Matrix NYI"))
         } else if value.contains(".") {
-            let v = Float::parse(value).map_err(|e| e.to_string())?;
+            let v = Float::parse(&value).map_err(|e| e.to_string())?;
             let f = Float::with_val(FLOAT_PRECISION, v);
             Ok(Value::from(f))
-        } else if let Ok(v) = Rational::parse(value) {
+        } else if let Some(caps) = radixre.captures(value) {
+            match caps[1].to_lowercase().as_str() {
+                "b" => Rational::parse_radix(caps[2].to_string(), 2)
+                    .map(|v| Value::from(Rational::from(v)))
+                    .map_err(|e| e.to_string()),
+                "o" => Rational::parse_radix(caps[2].to_string(), 8)
+                    .map(|v| Value::from(Rational::from(v)))
+                    .map_err(|e| e.to_string()),
+                "d" => Rational::parse_radix(caps[2].to_string(), 10)
+                    .map(|v| Value::from(Rational::from(v)))
+                    .map_err(|e| e.to_string()),
+                "x" => Rational::parse_radix(caps[2].to_string(), 16)
+                    .map(|v| Value::from(Rational::from(v)))
+                    .map_err(|e| e.to_string()),
+                r => Err(format!("Invalid radix {} in {}", r, &value)),
+            }
+        } else if let Ok(v) = Rational::parse(&value) {
             Ok(Value::from(Rational::from(v)))
         } else {
-            Err(format!("Unknown value: {}", value))
+            Err(format!("Unknown value: {}", &value))
         }
     }
 }
@@ -188,7 +216,11 @@ impl Value {
                 let r = x.real();
                 let i = x.imag();
                 // @@ RADIX && check Float is normal
-                format!("({}, {})", r.to_f64(), i.to_f64())
+                if r.is_zero() {
+                    format!("{}i", i.to_f64())
+                } else {
+                    format!("{} + {}i", r.to_f64(), i.to_f64())
+                }
             }
             Value::Matrix(_x) => "NYI".to_string(),
         }
@@ -244,11 +276,16 @@ impl Value {
     }
 
     // Constants
+    pub fn e() -> Self {
+        let f = Float::with_val(FLOAT_PRECISION, 1);
+        Value::Scaler(Scaler::from(f.exp()))
+    }
     pub fn i() -> Self {
         Value::Scaler(Scaler::from(Complex::with_val(FLOAT_PRECISION, (0, 1))))
     }
-
-
+    pub fn pi() -> Self {
+        Value::Scaler(Scaler::from(Float::with_val(FLOAT_PRECISION, Constant::Pi)))
+    }
 }
 
 impl ops::Add<Value> for Value {

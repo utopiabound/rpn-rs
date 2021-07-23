@@ -39,7 +39,7 @@ impl StackOutput {
         table.set_row_resize(false);
         table.set_cols(2);
         table.set_col_header(false);
-        table.set_col_width(0, width - 10 - (table.row_header_width()+4));
+        table.set_col_width(0, width - 12 - (table.row_header_width() + 4));
         table.set_col_width(1, 10);
         table.set_col_resize(false);
         table.end();
@@ -69,10 +69,10 @@ impl StackOutput {
                         *rows_c.borrow_mut() = r;
                         s.set_rows(r);
                         //println!("D: Set rows = {}", r);
-                        true
-                    } else {
-                        false
                     }
+                    let w = s.width() - 12 - s.row_header_width();
+                    s.set_col_width(0, w);
+                    true
                 }
                 _ => false,
             }
@@ -90,26 +90,23 @@ impl StackOutput {
                 let rn = (data_c.borrow().len() as i32) - *rows_c.borrow() + row;
                 //println!("ROW:{} rows={} index={}", row,  *rows_c.borrow(), rn);
                 let value = if col == 0 && rn >= 0 {
-                    data_c.borrow()[rn as usize].to_string_radix(
-                        *radix_c.borrow(),
-                        *rational_c.borrow(),
-                    )
+                    data_c.borrow()[rn as usize]
+                        .to_string_radix(*radix_c.borrow(), *rational_c.borrow())
                 } else {
                     "".to_string()
                 };
-                Self::draw_data(
-                    &value,
-                    x,
-                    y,
-                    w,
-                    h,
-                    t.is_selected(row, col),
-                );
+                Self::draw_data(&value, x, y, w, h, t.is_selected(row, col));
             }
             _ => (),
         });
 
-        Self { table, rows, data, radix, rational }
+        Self {
+            table,
+            rows,
+            data,
+            radix,
+            rational,
+        }
     }
 
     pub fn redraw(&mut self) {

@@ -158,7 +158,7 @@ fn main() {
                         "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
                         "sqrt" => stacks[0].unary(|a| a.sqrt()),
                         "sqr" => stacks[0].unary(|a| a.clone() * a),
-                        "pow" => stacks[0].try_binary(|a, b| a.try_pow(b)),
+                        "^" | "pow" => stacks[0].try_binary(|a, b| a.try_pow(b)),
                         "+" => stacks[0].binary(|a, b| a + b),
                         "*" => stacks[0].binary(|a, b| a * b),
                         "-" => stacks[0].binary(|a, b| a - b),
@@ -166,10 +166,18 @@ fn main() {
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
                         // Constants
+                        "e" => {
+                            stacks[0].push(Value::e());
+                            Return::Ok
+                        }
                         "i" => {
                             stacks[0].push(Value::i());
                             Return::Ok
-                        },
+                        }
+                        "pi" => {
+                            stacks[0].push(Value::pi());
+                            Return::Ok
+                        }
                         v => match Value::try_from(v) {
                             Ok(v) => {
                                 stacks[0].push(v);
