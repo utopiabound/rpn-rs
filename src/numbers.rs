@@ -169,6 +169,30 @@ impl Scaler {
             Scaler::Complex(x) => Scaler::from(x.sqrt()),
         }
     }
+
+    /// Retrurn Natural Logorithm of value
+    pub fn ln(self) -> Self {
+        match self {
+            Scaler::Int(x) => {
+                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
+                Scaler::from(f.ln())
+            }
+            Scaler::Float(x) => Scaler::from(x.ln()),
+            Scaler::Complex(x) => Scaler::from(x.ln()),
+        }
+    }
+
+    /// Retrurn Logorithm of value
+    pub fn log10(self) -> Self {
+        match self {
+            Scaler::Int(x) => {
+                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
+                Scaler::from(f.log10())
+            }
+            Scaler::Float(x) => Scaler::from(x.log10()),
+            Scaler::Complex(x) => Scaler::from(x.log10()),
+        }
+    }
 }
 
 impl Value {
@@ -273,6 +297,20 @@ impl Value {
             }
         }
         Err(format!("{:?} << {:?} is not REAL >> INTEGER(u32)", self, b))
+    }
+
+    pub fn try_ln(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(Value::Scaler(x.ln())),
+            Value::Matrix(_) => Err("NYI".to_string()),
+        }
+    }
+
+    pub fn try_log10(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(Value::Scaler(x.log10())),
+            Value::Matrix(_) => Err("NYI".to_string()),
+        }
     }
 
     // Constants

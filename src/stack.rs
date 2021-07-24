@@ -13,6 +13,7 @@ pub enum Return {
 
 pub trait StackOps {
     fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
+    fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     fn unary2<F: Fn(Value) -> (Value, Value)>(&mut self, f: F) -> Return;
@@ -58,6 +59,19 @@ impl StackOps for Vec<Value> {
             self.push(c);
             self.push(d);
             Return::Ok
+        } else {
+            Return::Noop
+        }
+    }
+    fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return {
+        if let Some(a) = self.pop() {
+            match f(a) {
+                Ok(c) => {
+                    self.push(c);
+                    Return::Ok
+                }
+                Err(e) => Return::Err(e),
+            }
         } else {
             Return::Noop
         }

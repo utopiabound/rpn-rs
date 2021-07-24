@@ -158,6 +158,8 @@ fn main() {
                         "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
                         "sqrt" => stacks[0].unary(|a| a.sqrt()),
                         "sqr" => stacks[0].unary(|a| a.clone() * a),
+                        "log" => stacks[0].try_unary(|a| a.try_log10()),
+                        "ln" => stacks[0].try_unary(|a| a.try_ln()),
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.try_pow(b)),
                         "+" => stacks[0].binary(|a, b| a + b),
                         "*" => stacks[0].binary(|a, b| a * b),
