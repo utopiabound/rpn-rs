@@ -1,0 +1,64 @@
+<html>
+  <!-- HTML 2.0 -->
+  <head>
+    <title>RPN-rs Graphical Reverse Polish Notation Caluclator</title>
+  </head>
+  <body>
+    <h1>RPN-rs is a graphical reverse polish notation (RPN) calculator</h1>
+    <p>RPN-rs works with arbitrary presision rational numbers, large precision
+      floating point numbers, complex numbers, and matrices (in progress).
+      Numbers can be displayed in 4 different radix modes (base 2, 8, 10, 16).
+      <!-- Complex numbers can be displayed in either Cartesian or polar
+      form.--></p>
+
+    <p>RPN-rs uses a stack and reverse polish notation to evaluate expressions.
+      The stack in RPN-rs is infinite and limited only by available memory.</p>
+
+    <p>Expressions are evaluated in reverse polish notation.  Unlike
+      conventional (prefix) notation, RPN requires that all arguments to a
+      command are entered prior to execution of the command.  For example to add
+      6.7 to 3.2 you would push both numbers onto the stack, then press the add
+      (+) button:</p>
+
+    <p>Complex numbers can be entered in any of the following forms:</p>
+    <pre>
+(2 4)
+(2, 4)
+2+4i
+</pre>
+    <!-- <p>Matrix can be entered as follows:</p>
+<pre>
+[ [ 1 2 3 ] [ 4 5 6 ] [ 7 8 9 ] ]
+</pre>
+ -->
+
+    <table>
+      <tr><th>Command</th><th>Description</th></tr>
+      <tr><td>quit | q</td><td>Quite application</td></tr>
+      <tr><th colspan=2>Stack Operations</th></tr>
+      <tr><td>clear</td><td>clear stack and history</td></tr>
+      <tr><td>drop | pop | del</td><td>Remove top item on stack</td></tr>
+      <tr><td>dup | <i>enter</i></td><td>Duplicate top item on stack</td></tr>
+      <tr><td>swap | sw</td><td>Swap top two items on stack</td></tr>
+      <tr><td>undo | u</td><td>Undo last operation (other than clear)</td></tr>
+      <tr><th colspan=2>Arithmatic Operations</th></tr>
+      <tr><td colspan=2 align="center">results of operations are pushed to stack</td></tr>
+      <tr><td>+</td><td>Add top two items</td></tr>
+      <tr><td>-</td><td>Subtract top two items</td></tr>
+      <tr><td>*</td><td>Multiply top two items</td></tr>
+      <tr><td>/</td><td>Divide top two items</td></tr>
+      <tr><td>mod</td><td>Attempt to find modulo of top two items</td></tr>
+      <tr><td>sqr</td><td>Multiply top item by itself: <i>x&sup2;</i</td></tr>
+      <tr><td>sqrt</td><td>Find square root of top item: <i>./&macr;x</i></td></tr>
+      <tr><td>pow | ^</td><td>Exponent: <i>x^y</i></td></tr>
+      <tr><td>root</td><td>Nth Root</td></tr>
+      <tr><th colspan=2>Binary Operations</th></tr>
+      <tr><td>&lt;&lt;</td><td>Bitwise left shift: <i>x&laquo;y</i></td></tr>
+      <tr><td>&gt;&gt;</td><td>Bitwise right shift: <i>x&raquo;y</i></td></tr>
+      <tr><th colspan=2>Constants</th></tr>
+      <tr><td>i</td><td>Square root of -1</td></tr>
+      <tr><td>e</td><td>Euler's Number</td></tr>
+      <tr><td>pi</td><td>Ratio of circle circumference to diameter</td></tr>
+    </table>
+  </body>
+</html>

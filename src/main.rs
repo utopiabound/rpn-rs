@@ -10,7 +10,7 @@ use rpn_rs::{
 };
 
 use fltk::{
-    app,
+    app, dialog,
     enums::{CallbackTrigger, Shortcut},
     group::Pack,
     input::Input,
@@ -24,7 +24,9 @@ use std::convert::TryFrom;
 
 #[derive(Debug, Copy, Clone)]
 enum Message {
+    About,
     Clear,
+    Help,
     Input,
     Radix(Radix),
     Quit,
@@ -32,6 +34,8 @@ enum Message {
 
 fn main() {
     let stack_undo = 10;
+
+    env_logger::init();
 
     let app = app::App::default().with_scheme(app::Scheme::Gtk);
     app::set_visible_focus(false);
@@ -98,6 +102,20 @@ fn main() {
         s,
         Message::Radix(Radix::Binary),
     );
+    menu.add_emit(
+        "Help/About\t",
+        Shortcut::None,
+        MenuFlag::Normal,
+        s,
+        Message::About,
+    );
+    menu.add_emit(
+        "Help/Help\t",
+        Shortcut::None,
+        MenuFlag::Normal,
+        s,
+        Message::Help,
+    );
     if let Some(mut item) = menu.find_item("Radix/Decimal\t") {
         item.set();
     }
@@ -107,7 +125,6 @@ fn main() {
     let mut table = StackOutput::new(width, out_h);
 
     let mut input = Input::default().with_size(width, in_h);
-
     pack.resizable(table.table());
 
     pack.end();
@@ -118,8 +135,12 @@ fn main() {
     wind.end();
     wind.show();
 
-    input.set_trigger(CallbackTrigger::EnterKey);
+    input.set_trigger(CallbackTrigger::EnterKeyAlways);
     input.emit(s, Message::Input);
+
+    let mut help = dialog::HelpDialog::default();
+    help.set_value(include_str!("fixtures/help.html"));
+    help.hide();
 
     while app.wait() {
         if let Some(val) = r.recv() {
@@ -128,7 +149,6 @@ fn main() {
             match val {
                 Message::Input => {
                     stacks.push_front(stacks[0].clone());
-
                     let rv = match input.value().as_str() {
                         "q" | "quit" => {
                             app::quit();
@@ -155,18 +175,21 @@ fn main() {
                         "sw" | "swap" => stacks[0].binary2(|a, b| (b, a)),
                         "dup" | "" => stacks[0].unary2(|a| (a.clone(), a)),
                         // Arithmatic Operations
-                        "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
-                        "sqrt" => stacks[0].unary(|a| a.sqrt()),
-                        "sqr" => stacks[0].unary(|a| a.clone() * a),
-                        "log" => stacks[0].try_unary(|a| a.try_log10()),
                         "ln" => stacks[0].try_unary(|a| a.try_ln()),
+                        "log" => stacks[0].try_unary(|a| a.try_log10()),
+                        "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
+                        "sqr" => stacks[0].unary(|a| a.clone() * a),
+                        "sqrt" => stacks[0].unary(|a| a.sqrt()),
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.try_pow(b)),
+                        "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
                         "+" => stacks[0].binary(|a, b| a + b),
                         "*" => stacks[0].binary(|a, b| a * b),
                         "-" => stacks[0].binary(|a, b| a - b),
                         "/" => stacks[0].binary(|a, b| a / b),
+                        // Binary Operations
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
+                        // or, and, xor
                         // Constants
                         "e" => {
                             stacks[0].push(Value::e());
@@ -197,7 +220,7 @@ fn main() {
                                 stacks.pop_back();
                             }
                             need_redisplay = true;
-                            println!("writing: {:?}", stacks[0]);
+                            log::debug!("writing: {:?}", stacks[0]);
                         }
                         Return::Noop => {
                             stacks.pop_front();
@@ -207,8 +230,6 @@ fn main() {
                             error.set_value(&e);
                         }
                     }
-
-                    //println!("Max rows: {}", output.height()/output.text_size())
                 }
                 Message::Radix(r) => {
                     table.set_radix(r);
@@ -219,6 +240,8 @@ fn main() {
                     stacks.push_front(vec![]);
                     need_redisplay = true;
                 }
+                Message::About => dialog::message_default(r#"RPN Calculator (c) 2021"#),
+                Message::Help => help.show(),
                 Message::Quit => app::quit(),
             }
             if need_redisplay {

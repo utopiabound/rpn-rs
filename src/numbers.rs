@@ -193,6 +193,17 @@ impl Scaler {
             Scaler::Complex(x) => Scaler::from(x.log10()),
         }
     }
+
+    /// Return Inverse of value "1/x"
+    pub fn inverse(&self) -> Self {
+        match self {
+            Scaler::Int(x) => Scaler::from(Rational::from((x.denom(), x.numer()))),
+            Scaler::Float(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, (1.0 as f32) / x)),
+            Scaler::Complex(x) => {
+                Scaler::from(Complex::with_val(FLOAT_PRECISION, (1.0 as f32) / x))
+            }
+        }
+    }
 }
 
 impl Value {
@@ -249,6 +260,7 @@ impl Value {
             Value::Matrix(_x) => "NYI".to_string(),
         }
     }
+
     pub fn try_modulo(&self, b: &Value) -> Result<Value, String> {
         if b.is_zero() {
             return Err(format!("Division by zero"));
@@ -260,12 +272,21 @@ impl Value {
         }
         Err(format!("{:?} mod {:?} is not INT mod INT", self, b))
     }
+
     pub fn try_pow(self, other: Value) -> Result<Self, String> {
         match (self, other) {
             (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b))),
             _ => Err("NYI".to_string()),
         }
     }
+
+    pub fn try_root(self, other: Value) -> Result<Self, String> {
+        match (self, other) {
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b.inverse()))),
+            _ => Err("NYI".to_string()),
+        }
+    }
+
     pub fn try_rshift(&self, b: &Value) -> Result<Self, String> {
         if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
             if b.denom().to_u32() == Some(1) {
@@ -282,6 +303,7 @@ impl Value {
         }
         Err(format!("{:?} >> {:?} is not REAL >> INTEGER(u32)", self, b))
     }
+
     pub fn try_lshift(&self, b: &Value) -> Result<Self, String> {
         if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
             if b.denom().to_u32() == Some(1) {
