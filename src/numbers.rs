@@ -25,6 +25,9 @@ pub enum Scaler {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Matrix {
+    // @@ options:
+    // nalgebra::base::Matrix?
+    // libmat::mat::Matrix
     pub values: Vec<Vec<Scaler>>,
 }
 
@@ -97,7 +100,7 @@ impl From<Complex> for Scaler {
     }
 }
 
-impl TryFrom<&str> for Value {
+impl TryFrom<&str> for Scaler {
     type Error = String;
 
     // @@ Add radix parsing
@@ -116,33 +119,45 @@ impl TryFrom<&str> for Value {
 
             let v = Complex::parse(&value).map_err(|e| e.to_string())?;
             let c = Complex::with_val(FLOAT_PRECISION, v);
-            Ok(Value::from(c))
+            Ok(Scaler::from(c))
         } else if value.contains("[") {
-            Err(format!("Matrix NYI"))
+            Err(format!("Parsing Matrix as Scaler"))
         } else if value.contains(".") {
             let v = Float::parse(&value).map_err(|e| e.to_string())?;
             let f = Float::with_val(FLOAT_PRECISION, v);
-            Ok(Value::from(f))
+            Ok(Scaler::from(f))
         } else if let Some(caps) = radixre.captures(value) {
             match caps[1].to_lowercase().as_str() {
                 "b" => Rational::parse_radix(caps[2].to_string(), 2)
-                    .map(|v| Value::from(Rational::from(v)))
+                    .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
                 "o" => Rational::parse_radix(caps[2].to_string(), 8)
-                    .map(|v| Value::from(Rational::from(v)))
+                    .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
                 "d" => Rational::parse_radix(caps[2].to_string(), 10)
-                    .map(|v| Value::from(Rational::from(v)))
+                    .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
                 "x" => Rational::parse_radix(caps[2].to_string(), 16)
-                    .map(|v| Value::from(Rational::from(v)))
+                    .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
                 r => Err(format!("Invalid radix {} in {}", r, &value)),
             }
         } else if let Ok(v) = Rational::parse(&value) {
-            Ok(Value::from(Rational::from(v)))
+            Ok(Scaler::from(Rational::from(v)))
         } else {
             Err(format!("Unknown value: {}", &value))
+        }
+    }
+}
+
+impl TryFrom<&str> for Value {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if value.contains("[") {
+            Err(format!("Matrix NYI"))
+        } else {
+            Scaler::try_from(value).map(|s| s.into())
         }
     }
 }
