@@ -41,6 +41,7 @@ impl StackOps for Vec<Value> {
             Return::Noop
         }
     }
+    #[allow(clippy::many_single_char_names)]
     fn binary2<F: Fn(Value, Value) -> (Value, Value)>(&mut self, f: F) -> Return {
         if self.len() > 1 {
             let a = self.pop().unwrap();

@@ -11,7 +11,6 @@ use std::rc::Rc;
 
 pub struct StackOutput {
     table: table::Table,
-    rows: Rc<RefCell<i32>>,
     radix: Rc<RefCell<Radix>>,
     rational: Rc<RefCell<bool>>,
     data: Rc<RefCell<Vec<Value>>>,
@@ -78,16 +77,14 @@ impl StackOutput {
             }
         });
 
-        let rows_c = rows.clone();
-
         // Called when the table is drawn then when it's redrawn due to events
         table.draw_cell(move |t, ctx, row, col, x, y, w, h| match ctx {
             table::TableContext::StartPage => draw::set_font(enums::Font::Helvetica, 14),
             table::TableContext::RowHeader => {
-                Self::draw_header(&format!("{}:", *rows_c.borrow() - row), x, y, w, h)
+                Self::draw_header(&format!("{}:", *rows.borrow() - row), x, y, w, h)
             } // Row titles
             table::TableContext::Cell => {
-                let rn = (data_c.borrow().len() as i32) - *rows_c.borrow() + row;
+                let rn = (data_c.borrow().len() as i32) - *rows.borrow() + row;
                 //println!("ROW:{} rows={} index={}", row,  *rows_c.borrow(), rn);
                 let value = if col == 0 && rn >= 0 {
                     data_c.borrow()[rn as usize]
@@ -102,10 +99,9 @@ impl StackOutput {
 
         Self {
             table,
-            rows,
-            data,
             radix,
             rational,
+            data,
         }
     }
 
