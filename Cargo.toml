@@ -7,6 +7,9 @@ edition = "2018"
 [dependencies]
 env_logger = "0.9"
 fltk = "1.1"
+#libmat = "0.2"
+libmat = { git = "https://github.com/utopiabound/libmat", branch = "no-copy" }
 log = "0.4"
+num-traits = "0.2"
 regex = "1"
 rug = "1.12"
