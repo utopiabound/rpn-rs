@@ -21,6 +21,8 @@ use fltk::{
 };
 use std::collections::VecDeque;
 use std::convert::TryFrom;
+use num_traits::Inv;
+use rug::ops::Pow;
 
 #[derive(Debug, Copy, Clone)]
 enum Message {
@@ -102,6 +104,7 @@ fn main() {
         s,
         Message::Radix(Radix::Binary),
     );
+    // @@ checkbox for rational/float
     menu.add_emit(
         "Help/About\t",
         Shortcut::None,
@@ -175,17 +178,18 @@ fn main() {
                         "sw" | "swap" => stacks[0].binary2(|a, b| (b, a)),
                         "dup" | "" => stacks[0].unary2(|a| (a.clone(), a)),
                         // Arithmatic Operations
+                        "+" => stacks[0].try_binary(|a, b| a + b),
+                        "*" => stacks[0].try_binary(|a, b| a * b),
+                        "-" => stacks[0].try_binary(|a, b| a - b),
+                        "/" => stacks[0].try_binary(|a, b| a / b),
+                        "inv" => stacks[0].try_unary(|a| a.inv()),
                         "ln" => stacks[0].try_unary(|a| a.try_ln()),
                         "log" => stacks[0].try_unary(|a| a.try_log10()),
                         "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
-                        "sqr" => stacks[0].unary(|a| a.clone() * a),
+                        "sqr" => stacks[0].try_unary(|a| a.clone() * a),
                         "sqrt" => stacks[0].unary(|a| a.sqrt()),
-                        "^" | "pow" => stacks[0].try_binary(|a, b| a.try_pow(b)),
+                        "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
                         "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
-                        "+" => stacks[0].binary(|a, b| a + b),
-                        "*" => stacks[0].binary(|a, b| a * b),
-                        "-" => stacks[0].binary(|a, b| a - b),
-                        "/" => stacks[0].binary(|a, b| a / b),
                         // Binary Operations
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),

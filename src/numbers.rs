@@ -4,14 +4,15 @@
  */
 
 use libmat::mat::Matrix;
-use num_traits::{One, Zero};
+use num_traits::{One, Zero, Inv, Num, Signed};
 use regex::Regex;
 use rug::{
-    float::{Constant, Special},
-    ops::{Pow, RemRounding},
+    float::{Constant, Special, Round},
+    ops::{Pow, RemRounding, DivAssignRound, DivFromRound},
     Complex, Float, Integer, Rational,
 };
 use std::{
+    cmp::Ordering,
     convert::{From, TryFrom},
     ops,
 };
@@ -150,12 +151,35 @@ impl TryFrom<&str> for Value {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value.contains('[') {
             // [ 1 2 3; 4 5 6; 1+2i 2.4 1.1-3.12i ]
-            let v: Vec<Vec<&str>> = value.split(';').map(|s| s.trim()).map(|s| s.split(' ').collect()).collect();
+            let v: Vec<Vec<&str>> = value
+                .split(&[';', '[', ']'][..])
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.split(' ').collect())
+                .collect();
 
-            Err(format!("Value: {:?}", v))
+            let rows = v.len();
+            let cols = v[0].len();
+            Matrix::from_vec(
+                rows,
+                cols,
+                v.into_iter()
+                    .flatten()
+                    .map(|n| Scaler::try_from(n))
+                    .collect::<Result<Vec<Scaler>, String>>()?,
+            )
+            .map(|m| m.into())
+            .map_err(|e| e.to_string())
         } else {
             Scaler::try_from(value).map(|s| s.into())
         }
+    }
+}
+
+impl Num for Scaler {
+    type FromStrRadixErr = String;
+    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+        Err("NYI".to_string()) // @@
     }
 }
 
@@ -197,30 +221,38 @@ impl Scaler {
         }
     }
 
-    /// Return Inverse of value "1/x"
-    pub fn inverse(&self) -> Self {
+    pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
-            Scaler::Int(x) => Scaler::from(Rational::from((x.denom(), x.numer()))),
-            Scaler::Float(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
-            Scaler::Complex(x) => Scaler::from(Complex::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
-        }
-    }
-}
-
-impl PartialEq for Scaler {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Scaler::Int(a), Scaler::Int(b)) => a == b,
-            (Scaler::Int(a), Scaler::Float(b)) => a == b,
-            (Scaler::Int(a), Scaler::Complex(b)) => a == b,
-
-            (Scaler::Float(a), Scaler::Int(b)) => a == b,
-            (Scaler::Float(a), Scaler::Float(b)) => a == b,
-            (Scaler::Float(a), Scaler::Complex(b)) => a == b,
-
-            (Scaler::Complex(a), Scaler::Int(b)) => a == b,
-            (Scaler::Complex(a), Scaler::Float(b)) => a == b,
-            (Scaler::Complex(a), Scaler::Complex(b)) => a == b,
+            Scaler::Int(x) => {
+                if !rational && x.denom().to_u32() != Some(1) {
+                    if radix == Radix::Decimal {
+                        format!("{}", x.to_f64())
+                    } else {
+                        // @@
+                        let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
+                        f.to_string_radix(radix.into(), None)
+                    }
+                } else {
+                    x.to_string_radix(radix.into())
+                }
+            }
+            Scaler::Float(x) => {
+                if x.is_normal() && radix == Radix::Decimal {
+                    format!("{}", x.to_f64())
+                } else {
+                    x.to_string_radix(radix.into(), None)
+                }
+            }
+            Scaler::Complex(x) => {
+                let r = x.real();
+                let i = x.imag();
+                // @@ RADIX && check Float is normal
+                if r.is_zero() {
+                    format!("{}i", i.to_f64())
+                } else {
+                    format!("{} + {}i", r.to_f64(), i.to_f64())
+                }
+            }
         }
     }
 }
@@ -250,7 +282,16 @@ impl Value {
     pub fn is_zero(&self) -> bool {
         match self {
             Value::Scaler(x) => x.is_zero(),
-            Value::Matrix(_) => false, // @@
+            Value::Matrix(x) => {
+                for i in 0..x.row_count() {
+                    for j in 0..x.col_count() {
+                        if !x[i][j].is_zero() {
+                            return false;
+                        }
+                    }
+                }
+                true
+            }
         }
     }
 
@@ -267,37 +308,26 @@ impl Value {
 
     pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
-            Value::Scaler(Scaler::Int(x)) => {
-                if !rational && x.denom().to_u32() != Some(1) {
-                    if radix == Radix::Decimal {
-                        format!("{}", x.to_f64())
-                    } else {
-                        // @@
-                        let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
-                        f.to_string_radix(radix.into(), None)
+            Value::Scaler(x) => x.to_string_radix(radix, rational),
+            Value::Matrix(x) => {
+                let mut s = String::from("[");
+                let rowmax = x.row_count();
+                for i in 0..rowmax {
+                    for j in 0..x.col_count() {
+                        s += " ";
+                        s += x[i][j].to_string_radix(radix, rational).as_str();
                     }
-                } else {
-                    x.to_string_radix(radix.into())
+                    s += if i == rowmax - 1 { " ]" } else { " ;" };
                 }
+                s
             }
-            Value::Scaler(Scaler::Float(x)) => {
-                if x.is_normal() && radix == Radix::Decimal {
-                    format!("{}", x.to_f64())
-                } else {
-                    x.to_string_radix(radix.into(), None)
-                }
-            }
-            Value::Scaler(Scaler::Complex(x)) => {
-                let r = x.real();
-                let i = x.imag();
-                // @@ RADIX && check Float is normal
-                if r.is_zero() {
-                    format!("{}i", i.to_f64())
-                } else {
-                    format!("{} + {}i", r.to_f64(), i.to_f64())
-                }
-            }
-            Value::Matrix(x) => format!("{:?}", x), // @@
+        }
+    }
+
+    pub fn lines(&self) -> usize {
+        match self {
+            Value::Scaler(_) => 1,
+            Value::Matrix(x) => x.row_count(),
         }
     }
 
@@ -313,16 +343,9 @@ impl Value {
         Err(format!("{:?} mod {:?} is not INT mod INT", self, b))
     }
 
-    pub fn try_pow(self, other: Value) -> Result<Self, String> {
-        match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b))),
-            _ => Err("NYI".to_string()),
-        }
-    }
-
     pub fn try_root(self, other: Value) -> Result<Self, String> {
         match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b.inverse()))),
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b.inv()))),
             _ => Err("NYI".to_string()),
         }
     }
@@ -389,49 +412,101 @@ impl Value {
 }
 
 impl ops::Add<Value> for Value {
-    type Output = Self;
+    type Output = Result<Self, String>;
 
-    fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self::Output {
         match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Value::Scaler(a + b),
-            //(Value::Scaler(a), Value::Matrix(b)) => Value::Matrix(a + b),
-            //(Value::Matrix(a), Value::Scaler(b)) => Value::Matrix(a + b),
-            _ => Value::Scaler(Scaler::Float(Float::with_val(1, Special::Nan))),
-        }
-    }
-}
-
-impl ops::Sub<Value> for Value {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Value::Scaler(a - b),
-            _ => Value::Scaler(Scaler::Float(Float::with_val(1, Special::Nan))),
-        }
-    }
-}
-
-impl ops::Mul<Value> for Value {
-    type Output = Self;
-
-    fn mul(self, other: Self) -> Self {
-        match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Value::Scaler(a * b),
-            (Value::Scaler(a), Value::Matrix(b)) => Value::Matrix(b * a),
-            (Value::Matrix(a), Value::Scaler(b)) => Value::Matrix(a * b),
-            _ => Value::Scaler(Scaler::Float(Float::with_val(1, Special::Nan))),
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a + b)),
+            //(Value::Scaler(a), Value::Matrix(b)) => {
+            //(b + a).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+            //}
+            (Value::Matrix(a), Value::Matrix(b)) => {
+                (a + b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+            }
+            _ => Err("NYI".to_string()),
         }
     }
 }
 
 impl ops::Div<Value> for Value {
-    type Output = Self;
+    type Output = Result<Value, String>;
 
-    fn div(self, other: Self) -> Self {
+    fn div(self, other: Self) -> Self::Output {
         match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Value::Scaler(a / b),
-            _ => Value::Scaler(Scaler::Float(Float::with_val(1, Special::Nan))),
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a / b)),
+            _ => Err("NYI".to_string()),
+        }
+    }
+}
+
+impl Inv for Value {
+    type Output = Result<Value, String>;
+
+    fn inv(self) -> Self::Output {
+        match self {
+            Value::Scaler(x) => Ok(Value::Scaler(x.inv())),
+            Value::Matrix(x) => {
+                if let Ok(Some(m)) = x.inv() {
+                    Ok(Value::Matrix(m))
+                } else {
+                    Err("Matrix has no inverse".to_string())
+                }
+            }
+        }
+    }
+}
+
+impl ops::Mul<Value> for Value {
+    type Output = Result<Self, String>;
+
+    fn mul(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a * b)),
+            (Value::Scaler(a), Value::Matrix(b)) => Ok(Value::Matrix(b * a)),
+            (Value::Matrix(a), Value::Scaler(b)) => Ok(Value::Matrix(a * b)),
+            (Value::Matrix(a), Value::Matrix(b)) => {
+                (a * b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+            }
+        }
+    }
+}
+
+impl Pow<Value> for Value {
+    type Output = Result<Self, String>;
+
+    fn pow(self, other: Self) -> Self::Output {
+        match (self.clone(), other) {
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b))),
+            (Value::Matrix(_m), Value::Scaler(b)) => {
+                match b {
+                    Scaler::Int(x) => {
+                        let (num, den) = x.into_numer_denom();
+                        if den != 1 {
+                            Err(format!("NYI (denom = {})", den))
+                        } else if num == -1 {
+                            self.inv()
+                        } else {
+                            Err("NYI".to_string())
+                        }
+                    }
+                    _ => Err("NYI".to_string()),
+                }
+            }
+            (_, Value::Matrix(_)) => Err("Unable to use matrix as exponent".to_string()),
+        }
+    }
+}
+
+impl ops::Sub<Value> for Value {
+    type Output = Result<Self, String>;
+
+    fn sub(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a - b)),
+            (Value::Matrix(a), Value::Matrix(b)) => {
+                (a - b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+            }
+            _ => Err("NYI".to_string()),
         }
     }
 }
@@ -439,7 +514,7 @@ impl ops::Div<Value> for Value {
 impl ops::Add<Scaler> for Scaler {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self {
+    fn add(self, other: Self) -> Self::Output {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a + b),
             (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(a + b),
@@ -474,68 +549,10 @@ impl ops::AddAssign<Scaler> for Scaler {
     }
 }
 
-impl ops::Sub<Scaler> for Scaler {
-    type Output = Self;
-
-    fn sub(self, other: Self) -> Self {
-        match (self, other) {
-            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a - b),
-            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(a - b),
-            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a - b),
-
-            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a - b),
-            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a - b),
-            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a - b),
-
-            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a - b),
-            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a - b),
-            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a - b),
-        }
-    }
-}
-
-impl ops::Mul<Scaler> for Scaler {
-    type Output = Self;
-
-    fn mul(self, other: Self) -> Self {
-        match (self, other) {
-            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a * b),
-            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(b * a),
-            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a * b),
-
-            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a * b),
-            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a * b),
-            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a * b),
-
-            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a * b),
-            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a * b),
-            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a * b),
-        }
-    }
-}
-
-impl ops::MulAssign<Scaler> for Scaler {
-    fn mul_assign(&mut self, other: Self) {
-        *self = match (self.clone(), other) {
-            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a * b),
-            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(b * a),
-            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a * b),
-
-            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a * b),
-            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a * b),
-            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a * b),
-
-            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a * b),
-            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a * b),
-            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a * b),
-        };
-    }
-}
-
 impl ops::Div<Scaler> for Scaler {
     type Output = Self;
 
-    fn div(self, other: Self) -> Self {
+    fn div(self, other: Self) -> Self::Output {
         if other.is_zero() {
             return Scaler::Float(Float::with_val(1, Special::Nan));
         }
@@ -583,10 +600,138 @@ impl ops::DivAssign<Scaler> for Scaler {
     }
 }
 
+impl Inv for Scaler {
+    type Output = Scaler;
+
+    fn inv(self) -> Self::Output {
+        match self {
+            Scaler::Int(x) => Scaler::from(Rational::from((x.denom(), x.numer()))),
+            Scaler::Float(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
+            Scaler::Complex(x) => Scaler::from(Complex::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
+        }        
+    }
+}
+
+impl ops::Mul<Scaler> for Scaler {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a * b),
+            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(b * a),
+            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a * b),
+
+            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a * b),
+            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a * b),
+            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a * b),
+
+            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a * b),
+            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a * b),
+            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a * b),
+        }
+    }
+}
+
+impl ops::MulAssign<Scaler> for Scaler {
+    fn mul_assign(&mut self, other: Self) {
+        *self = match (self.clone(), other) {
+            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a * b),
+            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(b * a),
+            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a * b),
+
+            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a * b),
+            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a * b),
+            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a * b),
+
+            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a * b),
+            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a * b),
+            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a * b),
+        };
+    }
+}
+
+impl ops::Neg for Scaler {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Scaler::Int(x) => x.neg().into(),
+            Scaler::Float(x) => x.neg().into(),
+            Scaler::Complex(x) => x.neg().into(),
+        }        
+    }
+}
+
+impl PartialEq for Scaler {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Scaler::Int(a), Scaler::Int(b)) => a == b,
+            (Scaler::Int(a), Scaler::Float(b)) => a == b,
+            (Scaler::Int(a), Scaler::Complex(b)) => a == b,
+
+            (Scaler::Float(a), Scaler::Int(b)) => a == b,
+            (Scaler::Float(a), Scaler::Float(b)) => a == b,
+            (Scaler::Float(a), Scaler::Complex(b)) => a == b,
+
+            (Scaler::Complex(a), Scaler::Int(b)) => a == b,
+            (Scaler::Complex(a), Scaler::Float(b)) => a == b,
+            (Scaler::Complex(a), Scaler::Complex(b)) => a == b,
+        }
+    }
+}
+
+impl PartialOrd for Scaler {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Scaler::Int(a), Scaler::Int(b)) => a.partial_cmp(b),
+            (Scaler::Int(a), Scaler::Float(b)) => a.partial_cmp(b),
+            (Scaler::Int(a), Scaler::Complex(b)) => {
+                if a == b {
+                    Some(Ordering::Equal)
+                } else {
+                    None
+                }
+            }
+
+            (Scaler::Float(a), Scaler::Int(b)) => a.partial_cmp(b),
+            (Scaler::Float(a), Scaler::Float(b)) => a.partial_cmp(b),
+            (Scaler::Float(a), Scaler::Complex(b)) => {
+                if a == b {
+                    Some(Ordering::Equal)
+                } else {
+                    None
+                }
+            }
+
+            (Scaler::Complex(a), Scaler::Int(b)) => {
+                if a == b {
+                    Some(Ordering::Equal)
+                } else {
+                    None
+                }
+            }
+            (Scaler::Complex(a), Scaler::Float(b)) => {
+                if a == b {
+                    Some(Ordering::Equal)
+                } else {
+                    None
+                }
+            }
+            (Scaler::Complex(a), Scaler::Complex(b)) => {
+                if a == b {
+                    Some(Ordering::Equal)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
 impl Pow<Scaler> for Scaler {
     type Output = Self;
 
-    fn pow(self, other: Self) -> Self {
+    fn pow(self, other: Self) -> Self::Output {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => {
                 // @@ attempt to maintain int
@@ -618,6 +763,153 @@ impl Pow<Scaler> for Scaler {
             (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a.pow(b)),
             (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a.pow(b)),
         }
+    }
+}
+
+impl ops::Rem for Scaler {
+    type Output = Self;
+
+    fn rem(self, other: Self) -> Self::Output {
+        if other.is_zero() {
+            // @@ Infinity vs NegInfinity
+            Scaler::Float(Float::with_val(1, Special::Infinity))
+        } else {
+            match (self, other) {
+                (Scaler::Int(a), Scaler::Int(b)) => {
+                    let af: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
+                    let bf: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
+                    Scaler::from(af % bf)
+                }
+                (Scaler::Int(a), Scaler::Float(b)) => {
+                    let f: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
+                    Scaler::from(f % b)
+                },
+                (Scaler::Int(a), Scaler::Complex(b)) => {
+                    let af: Float = a.clone() * Float::with_val(FLOAT_PRECISION, 1.0);
+                    let mut c = b.clone();
+                    c.div_from_round(af, (Round::Zero, Round::Zero));
+                    Scaler::from(a - c * b)
+                },
+
+                (Scaler::Float(a), Scaler::Int(b)) => {
+                    let bf: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
+                    Scaler::from(a % bf)
+                }
+                (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a % b),
+                (Scaler::Float(a), Scaler::Complex(b)) => {
+                    let mut c = b.clone();
+                    c.div_from_round(a.clone(), (Round::Zero, Round::Zero));
+                    Scaler::from(a - c * b)
+                }
+
+                (Scaler::Complex(a), Scaler::Int(b)) => {
+                    let mut c = a.clone();
+                    c.div_assign_round(b.clone(), (Round::Zero, Round::Zero));
+                    Scaler::from(a - c * b)
+                }
+                (Scaler::Complex(a), Scaler::Float(b)) => {
+                    let mut c = a.clone();
+                    c.div_assign_round(b.clone(), (Round::Zero, Round::Zero));
+                    Scaler::from(a - c * b)
+                }
+                (Scaler::Complex(a), Scaler::Complex(b)) => {
+                    let mut c = a.clone();
+                    c.div_assign_round(b.clone(), (Round::Zero, Round::Zero));
+                    Scaler::from(a - c * b)
+                }
+            }
+        }
+
+    }
+}
+
+impl Signed for Scaler {
+    fn abs(&self) -> Self {
+        match self {
+            Scaler::Int(x) => x.clone().abs().into(),
+            Scaler::Float(x) => x.clone().abs().into(),
+            Scaler::Complex(x) => x.clone().abs().into(),
+        }
+    }
+    fn abs_sub(&self, other: &Self) -> Self {
+        // @@ if self < other
+        // return 0
+        // else
+        self.clone() - other.clone()
+    }
+    fn signum(&self) -> Self {
+        match self {
+            Scaler::Int(x) => x.clone().signum().into(),
+            Scaler::Float(x) => x.clone().signum().into(),
+            Scaler::Complex(x) => {
+                Scaler::from(Complex::with_val(1, (x.real().clone().signum(), x.imag().clone().signum())))
+            }
+        }
+    }
+    fn is_positive(&self) -> bool {
+        match self {
+            Scaler::Int(x) => x.clone().signum() == 1,
+            Scaler::Float(x) => x.is_sign_positive(),
+            Scaler::Complex(_) => false, // @@
+        }
+    }
+    fn is_negative(&self) -> bool {
+        match self {
+            Scaler::Int(x) => x.clone().signum() == -1,
+            Scaler::Float(x) => x.is_sign_negative(),
+            Scaler::Complex(_) => false, // @@
+        }
+    }
+}
+
+impl ops::Sub<Scaler> for Scaler {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a - b),
+            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(a - b),
+            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a - b),
+
+            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a - b),
+            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a - b),
+            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a - b),
+
+            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a - b),
+            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a - b),
+            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a - b),
+        }
+    }
+}
+
+impl ops::SubAssign for Scaler {
+    fn sub_assign(&mut self, other: Self) {
+        *self = match (self.clone(), other) {
+            (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a - b),
+            (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(a - b),
+            (Scaler::Int(a), Scaler::Complex(b)) => Scaler::from(a - b),
+
+            (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a - b),
+            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a - b),
+            (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(a - b),
+
+            (Scaler::Complex(a), Scaler::Int(b)) => Scaler::from(a - b),
+            (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a - b),
+            (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a - b),
+        }
+    }
+}
+
+impl std::iter::Sum for Scaler {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Scaler> {
+        let mut a = Scaler::zero();
+
+        for (_, b) in iter.enumerate() {
+            a += b;
+        }
+        a
     }
 }
 
