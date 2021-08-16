@@ -417,13 +417,10 @@ impl ops::Add<Value> for Value {
     fn add(self, other: Self) -> Self::Output {
         match (self, other) {
             (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a + b)),
-            //(Value::Scaler(a), Value::Matrix(b)) => {
-            //(b + a).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
-            //}
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a + b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
             }
-            _ => Err("NYI".to_string()),
+            _ => Err("Illegal Operation: Scaler & Matrix Addition".to_string())
         }
     }
 }
@@ -432,10 +429,7 @@ impl ops::Div<Value> for Value {
     type Output = Result<Value, String>;
 
     fn div(self, other: Self) -> Self::Output {
-        match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a / b)),
-            _ => Err("NYI".to_string()),
-        }
+        self * other.inv()?
     }
 }
 
@@ -506,7 +500,7 @@ impl ops::Sub<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a - b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
             }
-            _ => Err("NYI".to_string()),
+            _ => Err("Illegal Operation: Matrix & Scaler Subtraction".to_string()),
         }
     }
 }

@@ -12,4 +12,4 @@ libmat = { git = "https://github.com/utopiabound/libmat", branch = "no-copy" }
 log = "0.4"
 num-traits = "0.2"
 regex = "1"
-rug = "1.12"
+rug = "1.13"
