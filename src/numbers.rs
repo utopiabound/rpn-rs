@@ -4,11 +4,11 @@
  */
 
 use libmat::mat::Matrix;
-use num_traits::{One, Zero, Inv, Num, Signed};
+use num_traits::{Inv, Num, One, Signed, Zero};
 use regex::Regex;
 use rug::{
-    float::{Constant, Special, Round},
-    ops::{Pow, RemRounding, DivAssignRound, DivFromRound},
+    float::{Constant, Round, Special},
+    ops::{DivAssignRound, DivFromRound, Pow, RemRounding},
     Complex, Float, Integer, Rational,
 };
 use std::{
@@ -178,7 +178,7 @@ impl TryFrom<&str> for Value {
 
 impl Num for Scaler {
     type FromStrRadixErr = String;
-    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+    fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
         Err("NYI".to_string()) // @@
     }
 }
@@ -398,6 +398,14 @@ impl Value {
         }
     }
 
+    // Matrix Only Functions
+    pub fn try_det(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(_) => Err("No determinate for Scaler".to_string()),
+            Value::Matrix(x) => Ok(Value::Scaler(x.det().map_err(|e| e.to_string())?)),
+        }
+    }
+
     // Constants
     pub fn e() -> Self {
         let f = Float::with_val(FLOAT_PRECISION, 1);
@@ -420,7 +428,7 @@ impl ops::Add<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a + b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
             }
-            _ => Err("Illegal Operation: Scaler & Matrix Addition".to_string())
+            _ => Err("Illegal Operation: Scaler & Matrix Addition".to_string()),
         }
     }
 }
@@ -471,22 +479,41 @@ impl Pow<Value> for Value {
     fn pow(self, other: Self) -> Self::Output {
         match (self.clone(), other) {
             (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b))),
-            (Value::Matrix(_m), Value::Scaler(b)) => {
-                match b {
-                    Scaler::Int(x) => {
-                        let (num, den) = x.into_numer_denom();
-                        if den != 1 {
-                            Err(format!("NYI (denom = {})", den))
-                        } else if num == -1 {
-                            self.inv()
+            (Value::Matrix(_m), Value::Scaler(b)) => match b {
+                Scaler::Int(x) => {
+                    let (mut num, den) = x.into_numer_denom();
+                    if den != 1 {
+                        Err(format!("NYI (denom = {})", den))
+                    } else {
+                        let m = if num < 0 {
+                            num = -num;
+                            self.inv()?
                         } else {
-                            Err("NYI".to_string())
+                            self
+                        };
+                        let mut acc = m.clone();
+                        while num > 1 {
+                            acc = (acc * m.clone())?;
+                            num -= 1;
                         }
+                        Ok(acc)
                     }
-                    _ => Err("NYI".to_string()),
                 }
-            }
-            (_, Value::Matrix(_)) => Err("Unable to use matrix as exponent".to_string()),
+                _ => Err("Unsupported: Matrix raised to non-whole power".to_string()),
+            },
+            (_, Value::Matrix(_)) => Err("Unsupported: matrix as exponent".to_string()),
+        }
+    }
+}
+
+impl ops::Rem for Value {
+    type Output = Result<Self, String>;
+
+    fn rem(self, other: Self) -> Self::Output {
+        match (self, other) {
+            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a % b)),
+            (Value::Matrix(_a), Value::Scaler(_b)) => Err("NYI".to_string()),
+            _ => Err("Illegal Operation: ".to_string()),
         }
     }
 }
@@ -602,7 +629,7 @@ impl Inv for Scaler {
             Scaler::Int(x) => Scaler::from(Rational::from((x.denom(), x.numer()))),
             Scaler::Float(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
             Scaler::Complex(x) => Scaler::from(Complex::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
-        }        
+        }
     }
 }
 
@@ -652,7 +679,7 @@ impl ops::Neg for Scaler {
             Scaler::Int(x) => x.neg().into(),
             Scaler::Float(x) => x.neg().into(),
             Scaler::Complex(x) => x.neg().into(),
-        }        
+        }
     }
 }
 
@@ -777,13 +804,13 @@ impl ops::Rem for Scaler {
                 (Scaler::Int(a), Scaler::Float(b)) => {
                     let f: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
                     Scaler::from(f % b)
-                },
+                }
                 (Scaler::Int(a), Scaler::Complex(b)) => {
                     let af: Float = a.clone() * Float::with_val(FLOAT_PRECISION, 1.0);
                     let mut c = b.clone();
                     c.div_from_round(af, (Round::Zero, Round::Zero));
                     Scaler::from(a - c * b)
-                },
+                }
 
                 (Scaler::Float(a), Scaler::Int(b)) => {
                     let bf: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
@@ -813,7 +840,6 @@ impl ops::Rem for Scaler {
                 }
             }
         }
-
     }
 }
 
@@ -835,9 +861,10 @@ impl Signed for Scaler {
         match self {
             Scaler::Int(x) => x.clone().signum().into(),
             Scaler::Float(x) => x.clone().signum().into(),
-            Scaler::Complex(x) => {
-                Scaler::from(Complex::with_val(1, (x.real().clone().signum(), x.imag().clone().signum())))
-            }
+            Scaler::Complex(x) => Scaler::from(Complex::with_val(
+                1,
+                (x.real().clone().signum(), x.imag().clone().signum()),
+            )),
         }
     }
     fn is_positive(&self) -> bool {
@@ -897,7 +924,8 @@ impl ops::SubAssign for Scaler {
 impl std::iter::Sum for Scaler {
     fn sum<I>(iter: I) -> Self
     where
-        I: Iterator<Item = Scaler> {
+        I: Iterator<Item = Scaler>,
+    {
         let mut a = Scaler::zero();
 
         for (_, b) in iter.enumerate() {

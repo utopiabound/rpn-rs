@@ -148,7 +148,7 @@ checksum = "a7f823d141fe0a24df1e23b4af4e3c7ba9e5966ec514ea068c93024aa7deb765"
 [[package]]
 name = "libmat"
 version = "0.2.0"
-source = "git+https://github.com/utopiabound/libmat?branch=no-copy#c241c1fb662f8bc1ed856eb2e921b656129e3f75"
+source = "git+https://github.com/utopiabound/libmat?branch=no-copy#2b9a074e1ba1739e4eafb48146d2969dc080ff65"
 dependencies = [
  "num-traits",
 ]
@@ -173,9 +173,9 @@ dependencies = [
 
 [[package]]
 name = "memchr"
-version = "2.4.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
+checksum = "308cc39be01b73d0d18f82a0e7b2a3df85245f84af96fdddc5d202d27e47b86a"
 
 [[package]]
 name = "num-traits"

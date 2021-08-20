@@ -186,10 +186,13 @@ fn main() {
                         "ln" => stacks[0].try_unary(|a| a.try_ln()),
                         "log" => stacks[0].try_unary(|a| a.try_log10()),
                         "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
+                        "rem" | "%" => stacks[0].try_binary(|a, b| a % b),
                         "sqr" => stacks[0].try_unary(|a| a.clone() * a),
                         "sqrt" => stacks[0].unary(|a| a.sqrt()),
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
                         "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
+                        // Matrix Operations
+                        "det" => stacks[0].try_unary(|a| a.try_det()),
                         // Binary Operations
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
