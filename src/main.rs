@@ -19,10 +19,10 @@ use fltk::{
     prelude::{GroupExt, InputExt, MenuExt, WidgetExt},
     window::Window,
 };
-use std::collections::VecDeque;
-use std::convert::TryFrom;
 use num_traits::Inv;
 use rug::ops::Pow;
+use std::collections::VecDeque;
+use std::convert::TryFrom;
 
 #[derive(Debug, Copy, Clone)]
 enum Message {
@@ -31,6 +31,7 @@ enum Message {
     Help,
     Input,
     Radix(Radix),
+    Rational,
     Quit,
 }
 
@@ -104,7 +105,13 @@ fn main() {
         s,
         Message::Radix(Radix::Binary),
     );
-    // @@ checkbox for rational/float
+    menu.add_emit(
+        "Options/Rational\t",
+        Shortcut::Ctrl | 'r',
+        MenuFlag::Toggle,
+        s,
+        Message::Rational,
+    );
     menu.add_emit(
         "Help/About\t",
         Shortcut::None,
@@ -119,9 +126,12 @@ fn main() {
         s,
         Message::Help,
     );
-    if let Some(mut item) = menu.find_item("Radix/Decimal\t") {
-        item.set();
-    }
+    menu.find_item("Radix/Decimal\t")
+        .expect("Failed to find Decimal Radix")
+        .set();
+    menu.find_item("Options/Rational\t")
+        .expect("Failed to find Rational Option")
+        .set();
 
     let mut error = Output::default().with_size(width, err_h);
 
@@ -240,6 +250,13 @@ fn main() {
                 }
                 Message::Radix(r) => {
                     table.set_radix(r);
+                    need_redisplay = true;
+                }
+                Message::Rational => {
+                    let item = menu
+                        .find_item("Options/Rational\t")
+                        .expect("Failed to find Rational Option");
+                    table.set_rational(item.value());
                     need_redisplay = true;
                 }
                 Message::Clear => {

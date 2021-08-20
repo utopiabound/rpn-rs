@@ -250,7 +250,7 @@ impl Scaler {
                 if r.is_zero() {
                     format!("{}i", i.to_f64())
                 } else {
-                    format!("{} + {}i", r.to_f64(), i.to_f64())
+                    format!("{}+{}i", r.to_f64(), i.to_f64())
                 }
             }
         }
