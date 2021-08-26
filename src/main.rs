@@ -162,7 +162,10 @@ fn main() {
             match val {
                 Message::Input => {
                     stacks.push_front(stacks[0].clone());
-                    let rv = match input.value().as_str() {
+                    let value = input.value();
+                    input.set_value("");
+
+                    let rv = match value.as_str() {
                         "q" | "quit" => {
                             app::quit();
                             Return::Noop
@@ -222,16 +225,27 @@ fn main() {
                             stacks[0].push(Value::pi());
                             Return::Ok
                         }
-                        v => match Value::try_from(v) {
-                            Ok(v) => {
-                                stacks[0].push(v);
-                                Return::Ok
-                            }
-                            Err(e) => Return::Err(e),
-                        },
-                    };
+                        v => {
+                            let (v, op) = if v.ends_with(&['*', '/', '+', '-'][..]) {
+                                let (val, op) = v.split_at(v.len() - 1);
 
-                    input.set_value("");
+                                (val, Some(op))
+                            } else {
+                                (v, None)
+                            };
+                            match Value::try_from(v) {
+                                Ok(v) => {
+                                    stacks[0].push(v);
+                                    if let Some(op) = op {
+                                        input.set_value(op);
+                                        s.send(Message::Input);
+                                    }
+                                    Return::Ok
+                                }
+                                Err(e) => Return::Err(e),
+                            }
+                        }
+                    };
 
                     match rv {
                         Return::Ok => {
