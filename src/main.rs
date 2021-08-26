@@ -188,8 +188,8 @@ fn main() {
                                 Return::Noop
                             }
                         }
-                        "sw" | "swap" => stacks[0].binary2(|a, b| (b, a)),
-                        "dup" | "" => stacks[0].unary2(|a| (a.clone(), a)),
+                        "sw" | "swap" => stacks[0].binary_v(|a, b| vec![b, a]),
+                        "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
                         // Arithmatic Operations
                         "+" => stacks[0].try_binary(|a, b| a + b),
                         "*" => stacks[0].try_binary(|a, b| a * b),

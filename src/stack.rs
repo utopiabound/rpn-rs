@@ -16,8 +16,8 @@ pub trait StackOps {
     fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
-    fn unary2<F: Fn(Value) -> (Value, Value)>(&mut self, f: F) -> Return;
-    fn binary2<F: Fn(Value, Value) -> (Value, Value)>(&mut self, f: F) -> Return;
+    fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return;
+    fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return;
 }
 
 impl StackOps for Vec<Value> {
@@ -41,24 +41,22 @@ impl StackOps for Vec<Value> {
             Return::Noop
         }
     }
-    #[allow(clippy::many_single_char_names)]
-    fn binary2<F: Fn(Value, Value) -> (Value, Value)>(&mut self, f: F) -> Return {
+    fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return {
         if self.len() > 1 {
             let a = self.pop().unwrap();
             let b = self.pop().unwrap();
-            let (c, d) = f(b, a);
-            self.push(c);
-            self.push(d);
+            let res = f(b, a);
+            self.extend(res.into_iter());
+
             Return::Ok
         } else {
             Return::Noop
         }
     }
-    fn unary2<F: Fn(Value) -> (Value, Value)>(&mut self, f: F) -> Return {
+    fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return {
         if let Some(a) = self.pop() {
-            let (c, d) = f(a);
-            self.push(c);
-            self.push(d);
+            let res = f(a);
+            self.extend(res.into_iter());
             Return::Ok
         } else {
             Return::Noop
