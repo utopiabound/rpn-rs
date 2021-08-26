@@ -16,6 +16,7 @@ pub trait StackOps {
     fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
+    fn try_unary_v<F: Fn(Value) -> Result<Vec<Value>, String>>(&mut self, f: F) -> Return;
     fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return;
     fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return;
 }
@@ -67,6 +68,19 @@ impl StackOps for Vec<Value> {
             match f(a) {
                 Ok(c) => {
                     self.push(c);
+                    Return::Ok
+                }
+                Err(e) => Return::Err(e),
+            }
+        } else {
+            Return::Noop
+        }
+    }
+    fn try_unary_v<F: Fn(Value) -> Result<Vec<Value>, String>>(&mut self, f: F) -> Return {
+        if let Some(a) = self.pop() {
+            match f(a) {
+                Ok(c) => {
+                    self.extend(c.into_iter());
                     Return::Ok
                 }
                 Err(e) => Return::Err(e),

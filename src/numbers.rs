@@ -63,6 +63,12 @@ impl From<Radix> for i32 {
     }
 }
 
+impl From<i32> for Scaler {
+    fn from(x: i32) -> Self {
+        Scaler::Int(Rational::from(x))
+    }
+}
+
 impl From<Integer> for Scaler {
     fn from(x: Integer) -> Self {
         Scaler::Int(Rational::from(x))
@@ -188,7 +194,7 @@ fn is_integer(x: &Rational) -> bool {
 }
 
 impl Scaler {
-    /// Return Square Root of value
+    /// Square Root
     pub fn sqrt(self) -> Self {
         match self {
             Scaler::Int(x) => {
@@ -201,7 +207,7 @@ impl Scaler {
         }
     }
 
-    /// Retrurn Natural Logorithm of value
+    /// Natural Logarithm
     pub fn ln(self) -> Self {
         match self {
             Scaler::Int(x) => {
@@ -213,7 +219,7 @@ impl Scaler {
         }
     }
 
-    /// Retrurn Logorithm of value
+    /// Logarithm (base 10)
     pub fn log10(self) -> Self {
         match self {
             Scaler::Int(x) => {
@@ -225,7 +231,37 @@ impl Scaler {
         }
     }
 
-    fn to_usize(self) -> Option<usize> {
+    /// Factor Integer
+    pub fn factor(self) -> Result<Vec<Self>, String> {
+        match self {
+            Scaler::Int(x) => {
+                if x < 0 {
+                    Err("Cannot Factor Negative Number".to_string())
+                } else if !is_integer(&x) {
+                    Err("Cannot Factor Rational Number".to_string())
+                } else if x == 1 {
+                    Ok(vec![x.into()])
+                } else {
+                    let mut val = x.numer().clone();
+                    let mut factor = Integer::from(2);
+                    let mut factors = Vec::new();
+                    while val >= factor {
+                        if val.is_divisible(&factor) {
+                            factors.push(factor.clone().into());
+                            val /= &factor;
+                        } else {
+                            factor.next_prime_mut();
+                        }
+                    }
+                    Ok(factors)
+                }
+            }
+            Scaler::Float(_) => Err("Cannot Factor Floating point".to_string()),
+            Scaler::Complex(_) => Err("NYI".to_string()), // @@
+        }
+    }
+
+    fn get_usize(self) -> Option<usize> {
         if let Scaler::Int(x) = self {
             if is_integer(&x) {
                 x.numer().to_usize()
@@ -240,7 +276,7 @@ impl Scaler {
     pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
             Scaler::Int(x) => {
-                if !rational && is_integer(&x) {
+                if !rational && is_integer(x) {
                     if radix == Radix::Decimal {
                         format!("{}", x.to_f64())
                     } else {
@@ -347,6 +383,15 @@ impl Value {
         }
     }
 
+    pub fn try_factor(self) -> Result<Vec<Value>, String> {
+        match self {
+            Value::Scaler(x) => x
+                .factor()
+                .map(|x| x.into_iter().map(Value::Scaler).collect()),
+            Value::Matrix(_) => Err("No Factor for Matricies".to_string()), // @@ is this true?
+        }
+    }
+
     pub fn try_modulo(&self, b: &Value) -> Result<Value, String> {
         if b.is_zero() {
             return Err("Division by zero".to_string());
@@ -433,7 +478,7 @@ impl Value {
     pub fn identity(n: Value) -> Result<Self, String> {
         match n {
             Value::Scaler(n) => {
-                if let Some(x) = n.to_usize() {
+                if let Some(x) = n.get_usize() {
                     Matrix::one(x).map(Value::Matrix).map_err(|e| e.to_string())
                 } else {
                     Err("Identity Matrix can only be created with integer size".to_string())
@@ -1010,5 +1055,14 @@ mod test {
         assert_eq!(b, c);
         assert!(b.is_zero());
         assert!(c.is_zero());
+    }
+
+    #[test]
+    fn test_factor() {
+        let a = Scaler::from(12);
+        let f2 = Scaler::from(2);
+        let f3 = Scaler::from(3);
+
+        assert_eq!(a.factor(), Ok(vec![f2.clone(), f2, f3]));
     }
 }

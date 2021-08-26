@@ -204,10 +204,11 @@ fn main() {
                         "sqrt" => stacks[0].unary(|a| a.sqrt()),
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
                         "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
+                        "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
                         // Matrix Operations
                         "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
                         "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
-                        "ident" | "identity" => stacks[0].try_unary(|a| Value::identity(a)),
+                        "ident" | "identity" => stacks[0].try_unary(Value::identity),
                         // Binary Operations
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
