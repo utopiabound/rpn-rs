@@ -165,7 +165,7 @@ impl TryFrom<&str> for Value {
                 cols,
                 v.into_iter()
                     .flatten()
-                    .map(|n| Scaler::try_from(n))
+                    .map(Scaler::try_from)
                     .collect::<Result<Vec<Scaler>, String>>()?,
             )
             .map(|m| m.into())
@@ -181,6 +181,10 @@ impl Num for Scaler {
     fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
         Err("NYI".to_string()) // @@
     }
+}
+
+fn is_integer(x: &Rational) -> bool {
+    x.denom().to_u32() == Some(1)
 }
 
 impl Scaler {
@@ -221,10 +225,22 @@ impl Scaler {
         }
     }
 
+    fn to_usize(self) -> Option<usize> {
+        if let Scaler::Int(x) = self {
+            if is_integer(&x) {
+                x.numer().to_usize()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
             Scaler::Int(x) => {
-                if !rational && x.denom().to_u32() != Some(1) {
+                if !rational && is_integer(&x) {
                     if radix == Radix::Decimal {
                         format!("{}", x.to_f64())
                     } else {
@@ -406,7 +422,35 @@ impl Value {
         }
     }
 
+    pub fn try_transpose(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(_) => Err("No Transpose for Scaler".to_string()),
+            Value::Matrix(x) => Ok(Value::Matrix(x.transpose())),
+        }
+    }
+
     // Constants
+    pub fn identity(n: Value) -> Result<Self, String> {
+        match n {
+            Value::Scaler(n) => {
+                if let Some(x) = n.to_usize() {
+                    Matrix::one(x).map(Value::Matrix).map_err(|e| e.to_string())
+                } else {
+                    Err("Identity Matrix can only be created with integer size".to_string())
+                }
+            }
+            Value::Matrix(x) => {
+                if x.is_square() {
+                    Matrix::one(x.row_count())
+                        .map(Value::Matrix)
+                        .map_err(|e| e.to_string())
+                } else {
+                    Err("Matrix not square, cannot convert to identity".to_string())
+                }
+            }
+        }
+    }
+
     pub fn e() -> Self {
         let f = Float::with_val(FLOAT_PRECISION, 1);
         Value::Scaler(Scaler::from(f.exp()))
@@ -426,7 +470,7 @@ impl ops::Add<Value> for Value {
         match (self, other) {
             (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a + b)),
             (Value::Matrix(a), Value::Matrix(b)) => {
-                (a + b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+                (a + b).map(Value::Matrix).map_err(|e| e.to_string())
             }
             _ => Err("Illegal Operation: Scaler & Matrix Addition".to_string()),
         }
@@ -436,6 +480,8 @@ impl ops::Add<Value> for Value {
 impl ops::Div<Value> for Value {
     type Output = Result<Value, String>;
 
+    // This does use x * 1/y which trips clippy
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn div(self, other: Self) -> Self::Output {
         self * other.inv()?
     }
@@ -467,7 +513,7 @@ impl ops::Mul<Value> for Value {
             (Value::Scaler(a), Value::Matrix(b)) => Ok(Value::Matrix(b * a)),
             (Value::Matrix(a), Value::Scaler(b)) => Ok(Value::Matrix(a * b)),
             (Value::Matrix(a), Value::Matrix(b)) => {
-                (a * b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+                (a * b).map(Value::Matrix).map_err(|e| e.to_string())
             }
         }
     }
@@ -525,7 +571,7 @@ impl ops::Sub<Value> for Value {
         match (self, other) {
             (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::Scaler(a - b)),
             (Value::Matrix(a), Value::Matrix(b)) => {
-                (a - b).map(|m| Value::Matrix(m)).map_err(|e| e.to_string())
+                (a - b).map(Value::Matrix).map_err(|e| e.to_string())
             }
             _ => Err("Illegal Operation: Matrix & Scaler Subtraction".to_string()),
         }
