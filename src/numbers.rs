@@ -358,7 +358,7 @@ impl Value {
         }
     }
 
-    pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
+    pub fn to_string_radix(&self, radix: Radix, rational: bool, flat: bool) -> String {
         match self {
             Value::Scaler(x) => x.to_string_radix(radix, rational),
             Value::Matrix(x) => {
@@ -369,7 +369,13 @@ impl Value {
                         s += " ";
                         s += x[i][j].to_string_radix(radix, rational).as_str();
                     }
-                    s += if i == rowmax - 1 { " ]" } else { " ;" };
+                    s += if i == rowmax - 1 {
+                        " ]"
+                    } else if flat {
+                        " ;"
+                    } else {
+                        " ;\n"
+                    };
                 }
                 s
             }

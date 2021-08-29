@@ -16,10 +16,10 @@ pub struct StackOutput {
     data: Rc<RefCell<Vec<Value>>>,
 }
 
-const ROW_HEIGHT: i32 = 28;
+const ROW_HEIGHT: i32 = 26;
 
-fn row_count(h: i32) -> i32 {
-    1 + (h / ROW_HEIGHT)
+fn row_count(table_height: i32, lines: i32) -> i32 {
+    (table_height / ROW_HEIGHT) + (1 - lines)
 }
 
 impl StackOutput {
@@ -30,10 +30,8 @@ impl StackOutput {
         let data: Rc<RefCell<Vec<Value>>> = Rc::from(RefCell::from(vec![]));
         let radix = Rc::from(RefCell::from(Radix::Decimal));
         let rational = Rc::from(RefCell::from(true));
-        let rows = Rc::from(RefCell::from(row_count(height)));
 
-        table.set_row_height_all(ROW_HEIGHT);
-        table.set_rows(*rows.borrow());
+        table.set_rows(row_count(height, 1));
         table.set_row_header(true);
         table.set_row_resize(false);
         table.set_cols(2);
@@ -41,56 +39,62 @@ impl StackOutput {
         table.set_col_width(0, width - 12 - (table.row_header_width() + 4));
         table.set_col_width(1, 10);
         table.set_col_resize(false);
+        table.set_row_height_all(ROW_HEIGHT);
         table.end();
 
-        //println!("Table {}x{}", table.rows(), table.cols());
+        let data_c = data.clone();
+
+        // push focus from Text display to input
+        table.handle(move |s, e| match e {
+            enums::Event::Focus => {
+                if let Some(p) = s.parent() {
+                    if let Some(mut c) = p.child(p.children() - 1) {
+                        let _ = c.take_focus();
+                        return true;
+                    }
+                }
+                false
+            }
+            enums::Event::Resize => {
+                let r = row_count(
+                    s.height(),
+                    data_c
+                        .borrow()
+                        .last()
+                        .map(|x| x.lines() as i32)
+                        .unwrap_or(1),
+                );
+                if r != s.rows() {
+                    s.set_rows(r);
+                }
+                let w = s.width() - 12 - s.row_header_width();
+                s.set_col_width(0, w);
+                true
+            }
+            _ => false,
+        });
 
         let data_c = data.clone();
         let radix_c = radix.clone();
         let rational_c = rational.clone();
-        let rows_c = rows.clone();
-
-        // push focus from Text display to input
-        table.handle(move |s, e| {
-            match e {
-                enums::Event::Focus => {
-                    if let Some(p) = s.parent() {
-                        if let Some(mut c) = p.child(p.children() - 1) {
-                            let _ = c.take_focus();
-                            return true;
-                        }
-                    }
-                    false
-                }
-                enums::Event::Resize => {
-                    let r = row_count(s.height());
-                    if r != s.rows() {
-                        *rows_c.borrow_mut() = r;
-                        s.set_rows(r);
-                        //println!("D: Set rows = {}", r);
-                    }
-                    let w = s.width() - 12 - s.row_header_width();
-                    s.set_col_width(0, w);
-                    true
-                }
-                _ => false,
-            }
-        });
 
         // Called when the table is drawn then when it's redrawn due to events
         table.draw_cell(move |t, ctx, row, col, x, y, w, h| match ctx {
             table::TableContext::StartPage => draw::set_font(enums::Font::Helvetica, 14),
             table::TableContext::RowHeader => {
-                Self::draw_header(&format!("{}:", *rows.borrow() - row), x, y, w, h)
+                Self::draw_header(&format!("{}:", t.rows() - row), x, y, w, h)
             } // Row titles
             table::TableContext::Cell => {
-                let rn = (data_c.borrow().len() as i32) - *rows.borrow() + row;
-                //println!("ROW:{} rows={} index={}", row,  *rows_c.borrow(), rn);
-                let value = if col == 0 && rn >= 0 {
-                    data_c.borrow()[rn as usize]
-                        .to_string_radix(*radix_c.borrow(), *rational_c.borrow())
-                } else {
+                let total_rows = t.rows();
+                let rn = (data_c.borrow().len() as i32) - total_rows + row;
+                let value = if col != 0 || rn < 0 {
                     "".to_string()
+                } else {
+                    data_c.borrow()[rn as usize].to_string_radix(
+                        *radix_c.borrow(),
+                        *rational_c.borrow(),
+                        row + 1 != total_rows,
+                    )
                 };
                 Self::draw_data(&value, x, y, w, h, t.is_selected(row, col));
             }
@@ -106,6 +110,18 @@ impl StackOutput {
     }
 
     pub fn redraw(&mut self) {
+        let v = self
+            .data
+            .borrow()
+            .last()
+            .map(|x| x.lines() as i32)
+            .unwrap_or(1);
+        let th = self.table.height();
+        let row_count = row_count(th, v);
+        self.table.set_rows(row_count);
+        let h = v * ROW_HEIGHT;
+        self.table.set_row_height_all(ROW_HEIGHT);
+        self.table.set_row_height(row_count - 1, h);
         self.table.redraw()
     }
 
