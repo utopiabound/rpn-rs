@@ -276,7 +276,7 @@ impl Scaler {
     pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
             Scaler::Int(x) => {
-                if !rational && is_integer(x) {
+                if !rational && !is_integer(x) {
                     if radix == Radix::Decimal {
                         format!("{}", x.to_f64())
                     } else {
