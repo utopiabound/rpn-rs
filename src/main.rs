@@ -71,6 +71,13 @@ fn main() {
         Message::Clear,
     );
     menu.add_emit(
+        "File/Pop Stack\t",
+        Shortcut::Ctrl | 'p',
+        MenuFlag::Normal,
+        s,
+        Message::Drop,
+    );
+    menu.add_emit(
         "File/Quit\t",
         Shortcut::Ctrl | 'q',
         MenuFlag::Normal,
@@ -172,16 +179,20 @@ fn main() {
                         }
                         // Stack Operations
                         "undo" | "u" => {
-                            stacks.pop_front();
-                            stacks.pop_front();
-                            Return::Ok
+                            if stacks.len() > 2 {
+                                stacks.pop_front();
+                                stacks.pop_front();
+                                Return::Ok
+                            } else {
+                                Return::Err("No further undos in buffer".to_string())
+                            }
                         }
                         "clear" => {
                             stacks.clear();
                             stacks.push_front(vec![]);
                             Return::Ok
                         }
-                        "drop" | "pop" | "del" => {
+                        "drop" | "pop" | "del" | "delete" => {
                             if stacks[0].pop().is_some() {
                                 Return::Ok
                             } else {
@@ -265,6 +276,7 @@ fn main() {
                         }
                     }
                 }
+                Message::Drop => need_redisplay = stacks[0].pop().is_some(),
                 Message::Radix(r) => {
                     table.set_radix(r);
                     need_redisplay = true;
