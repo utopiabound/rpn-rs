@@ -28,6 +28,7 @@ use std::convert::TryFrom;
 enum Message {
     About,
     Clear,
+    Drop,
     Help,
     Input,
     Radix(Radix),
