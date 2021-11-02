@@ -128,7 +128,7 @@ checksum = "a60553f9a9e039a333b4e9b20573b9e9b9c0bb3a11e201ccc48ef4283456d673"
 [[package]]
 name = "libmat"
 version = "0.2.0"
-source = "git+https://github.com/utopiabound/libmat?branch=no-copy#ef79c31341b321fdb134665510e3ddc0efd3c489"
+source = "git+https://github.com/utopiabound/libmat?branch=master#a98eadd4ddfc834e10ddd35b6c2369adcb9312dd"
 dependencies = [
  "num-traits",
 ]
@@ -182,7 +182,7 @@ checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
 name = "rpn-rs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "env_logger",
  "fltk",

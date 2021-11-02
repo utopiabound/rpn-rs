@@ -1,14 +1,14 @@
 [package]
 name = "rpn-rs"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Nathaniel Clark <Nathaniel.Clark@misrule.us>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 env_logger = "0.9"
 fltk = "1.1"
-#libmat = "0.2"
-libmat = { git = "https://github.com/utopiabound/libmat", branch = "no-copy" }
+#libmat = "0.3"
+libmat = { git = "https://github.com/utopiabound/libmat", branch = "master" }
 log = "0.4"
 num-traits = "0.2"
 regex = "1"

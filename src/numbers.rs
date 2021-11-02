@@ -11,11 +11,7 @@ use rug::{
     ops::{DivAssignRound, DivFromRound, Pow, RemRounding},
     Complex, Float, Integer, Rational,
 };
-use std::{
-    cmp::Ordering,
-    convert::{From, TryFrom},
-    ops,
-};
+use std::{cmp::Ordering, ops};
 
 const FLOAT_PRECISION: u32 = 256;
 

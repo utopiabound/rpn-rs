@@ -22,7 +22,6 @@ use fltk::{
 use num_traits::Inv;
 use rug::ops::Pow;
 use std::collections::VecDeque;
-use std::convert::TryFrom;
 
 #[derive(Debug, Copy, Clone)]
 enum Message {
