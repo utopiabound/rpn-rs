@@ -3,7 +3,7 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
-use libmat::mat::Matrix;
+use libmat::{mat::Matrix, matrix};
 use num_traits::{Inv, Num, One, Signed, Zero};
 use regex::Regex;
 use rug::{
@@ -257,6 +257,15 @@ impl Scaler {
         }
     }
 
+    /// Truncate to Integer
+    pub fn trunc(&self) -> Result<Self, String> {
+        match self {
+            Scaler::Int(x) => Ok(x.clone().trunc().into()),
+            Scaler::Float(x) => Ok(x.clone().trunc().into()),
+            Scaler::Complex(_x) => Err("No Truncation of Complex Values".to_string()),
+        }
+    }
+
     fn get_usize(self) -> Option<usize> {
         if let Scaler::Int(x) = self {
             if is_integer(&x) {
@@ -458,6 +467,35 @@ impl Value {
         match self {
             Value::Scaler(x) => Ok(Value::Scaler(x.log10())),
             Value::Matrix(_) => Err("NYI".to_string()),
+        }
+    }
+
+    pub fn try_dms_conv(&self) -> Result<Self, String> {
+        match &self {
+            Value::Scaler(x) => {
+                let mut m = matrix! { Scaler::zero(), Scaler::zero(), Scaler::zero()};
+                m[0][0] = x.trunc()? % Scaler::from(360);
+                let f = x.abs_sub(&m[0][0]) * Scaler::from(60);
+                m[0][1] = f.trunc()?;
+                let f = (f - m[0][1].clone()) * Scaler::from(60);
+                m[0][2] = f;
+                Ok(m.into())
+            }
+            Value::Matrix(m) => {
+                if m.row_count() != 1 || m.col_count() != 3 {
+                    Err(format!(
+                        "Matrix of incorrect size [{}x{}] expected [1x3]",
+                        m.row_count(),
+                        m.col_count()
+                    ))
+                } else {
+                    Ok(((m[0][0].clone()
+                        + m[0][1].clone() / Scaler::from(60)
+                        + m[0][2].clone() / Scaler::from(3600))
+                        % Scaler::from(360))
+                    .into())
+                }
+            }
         }
     }
 

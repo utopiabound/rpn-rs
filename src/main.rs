@@ -214,6 +214,7 @@ fn main() {
                         "sqr" => stacks[0].try_unary(|a| a.clone() * a),
                         "sqrt" => stacks[0].unary(|a| a.sqrt()),
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
+                        "dms" => stacks[0].try_unary(|a| a.try_dms_conv()),
                         "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
                         "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
                         // Matrix Operations
