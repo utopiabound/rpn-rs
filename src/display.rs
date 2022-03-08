@@ -25,6 +25,7 @@ fn row_count(table_height: i32, lines: i32) -> i32 {
 impl StackOutput {
     pub fn new(width: i32, height: i32) -> Self {
         let mut table = table::Table::default()
+            .with_type(table::TableRowSelectMode::Single)
             .with_size(width, height)
             .center_of_parent();
         let data: Rc<RefCell<Vec<Value>>> = Rc::from(RefCell::from(vec![]));

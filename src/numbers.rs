@@ -425,13 +425,13 @@ impl Value {
     pub fn try_rshift(&self, b: &Value) -> Result<Self, String> {
         if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
             if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_u32() {
+                if let Some(b) = b.numer().to_usize() {
                     return Ok(Value::from(a.clone() >> b));
                 }
             }
         } else if let (Value::Scaler(Scaler::Float(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
             if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_u32() {
+                if let Some(b) = b.numer().to_usize() {
                     return Ok(Value::from(a.clone() >> b));
                 }
             }
@@ -442,13 +442,13 @@ impl Value {
     pub fn try_lshift(&self, b: &Value) -> Result<Self, String> {
         if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
             if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_u32() {
+                if let Some(b) = b.numer().to_usize() {
                     return Ok(Value::Scaler(Scaler::from(a.clone() << b)));
                 }
             }
         } else if let (Value::Scaler(Scaler::Float(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
             if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_u32() {
+                if let Some(b) = b.numer().to_usize() {
                     return Ok(Value::from(a.clone() << b));
                 }
             }
