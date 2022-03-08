@@ -199,6 +199,23 @@ fn main() {
                                 Return::Noop
                             }
                         }
+                        "rollu" | "ru" | "rup" | "rollup" => {
+                            if let Some(x) = stacks[0].pop() {
+                                stacks[0].insert(0, x);
+                                Return::Ok
+                            } else {
+                                Return::Noop
+                            }
+                        }
+                        "roll" | "rolld" | "rd" | "rdown" | "rolldown" => {
+                            if stacks[0].is_empty() {
+                                Return::Noop
+                            } else {
+                                let x = stacks[0].remove(0);
+                                stacks[0].push(x);
+                                Return::Ok
+                            }
+                        }
                         "sw" | "swap" => stacks[0].binary_v(|a, b| vec![b, a]),
                         "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
                         // Arithmatic Operations
@@ -224,7 +241,7 @@ fn main() {
                         // Binary Operations
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
-                        // or, and, xor
+                        // or, and, xor, nand
                         // Constants
                         "e" => {
                             stacks[0].push(Value::e());
@@ -294,7 +311,9 @@ fn main() {
                     stacks.push_front(vec![]);
                     need_redisplay = true;
                 }
-                Message::About => dialog::message_default(r#"RPN Calculator (c) 2021"#),
+                Message::About => dialog::message_default(
+                    format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
+                ),
                 Message::Help => help.show(),
                 Message::Quit => app::quit(),
             }

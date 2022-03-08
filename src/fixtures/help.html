@@ -37,23 +37,25 @@
       <tr><td>quit | q</td><td><i>N/A</i></td><td>Quite application</td></tr>
       <tr><th colspan=3>Stack Operations</th></tr>
       <tr><td>clear</td><td><i>all</i></td><td>clear stack and history</td></tr>
-      <tr><td>drop | pop | del</td><td>1</td><td>Remove top item on stack</td></tr>
-      <tr><td>dup | <i>enter</i><td>0</td></td><td>Duplicate top item on stack</td></tr>
-      <tr><td>swap | sw</td><td>0</td><td>Swap top two items on stack</td></tr>
+      <tr><td>drop | pop | del</td><td>1</td><td>Remove first item on stack</td></tr>
+      <tr><td>dup | <i>enter</i><td>0</td></td><td>Duplicate first item on stack</td></tr>
+      <tr><td>rollu(p) | ru(p) </td><td>0</td><td>Pop 1 item, and move it to end of stack</td></tr>
+      <tr><td>rolld(own) | rd(own) | roll</td><td>0</td><td>Opposite of rollup</td></tr>
+      <tr><td>swap | sw</td><td>0</td><td>Swap first two items on stack</td></tr>
       <tr><td>undo | u</td><td><i>N/A</i></td><td>Undo last operation (other than clear)</td></tr>
       <tr><th colspan=3>Arithmatic Operations</th></tr>
       <tr><td colspan=3 align="center">results of operations are pushed to stack</td></tr>
-      <tr><td>+</td><td>2</td><td>Add top two items</td></tr>
-      <tr><td>-</td><td>2</td><td>Subtract top two items</td></tr>
-      <tr><td>*</td><td>2</td><td>Multiply top two items</td></tr>
-      <tr><td>/</td><td>2</td><td>Divide top two items</td></tr>
+      <tr><td>+</td><td>2</td><td>Add first two items</td></tr>
+      <tr><td>-</td><td>2</td><td>Subtract first two items</td></tr>
+      <tr><td>*</td><td>2</td><td>Multiply first two items</td></tr>
+      <tr><td>/</td><td>2</td><td>Divide first two items</td></tr>
       <tr><td>inv</td><td>1</td><td>Inverse <i>x^-1</i></td></tr>
       <tr><td>mod</td><td>2</td><td>Modulo operator</td></tr>
       <tr><td>rem | %</td><td>2</td><td>Remainder (euclidean)</td></tr>
       <tr><td>pow | ^</td><td>2</td><td>Exponent: <i>x^y</i></td></tr>
       <tr><td>root</td><td>2</td><td>Nth Root</td></tr>
-      <tr><td>sqr</td><td>1</td><td>Multiply top item by itself: <i>x&sup2;</i></td></tr>
-      <tr><td>sqrt</td><td>1</td><td>Find square root of top item: <i>./&macr;x</i></td></tr>
+      <tr><td>sqr</td><td>1</td><td>Multiply first item by itself: <i>x&sup2;</i></td></tr>
+      <tr><td>sqrt</td><td>1</td><td>Find square root of first item: <i>./&macr;x</i></td></tr>
       <tr><th colspan=3>Scaler Operations</th></tr>
       <tr><td>factor</td><td>1</td><td>Find all prime factors of item</td></tr>
       <tr><td>ln</td><td>1</td><td>Natural Log <i>ln(x)</i></td></tr>
