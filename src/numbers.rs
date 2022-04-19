@@ -137,12 +137,12 @@ impl TryFrom<&str> for Scaler {
                 "x" => Rational::parse_radix(caps[2].to_string(), 16)
                     .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
-                r => Err(format!("Invalid radix {} in {}", r, &value)),
+                r => Err(format!("Invalid radix {r} in {value}")),
             }
         } else if let Ok(v) = Rational::parse(&value) {
             Ok(Scaler::from(Rational::from(v)))
         } else {
-            Err(format!("Unknown value: {}", &value))
+            Err(format!("Unknown value: {value}"))
         }
     }
 }
@@ -283,7 +283,7 @@ impl Scaler {
             Scaler::Int(x) => {
                 if !rational && !is_integer(x) {
                     if radix == Radix::Decimal {
-                        format!("{}", x.to_f64())
+                        x.to_f64().to_string()
                     } else {
                         // @@
                         let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
@@ -295,7 +295,7 @@ impl Scaler {
             }
             Scaler::Float(x) => {
                 if x.is_normal() && radix == Radix::Decimal {
-                    format!("{}", x.to_f64())
+                    x.to_f64().to_string()
                 } else {
                     x.to_string_radix(radix.into(), None)
                 }
@@ -340,8 +340,8 @@ impl Value {
         match self {
             Value::Scaler(x) => x.is_zero(),
             Value::Matrix(x) => {
-                for i in 0..x.row_count() {
-                    for j in 0..x.col_count() {
+                for i in 0..x.rows() {
+                    for j in 0..x.cols() {
                         if !x[i][j].is_zero() {
                             return false;
                         }
@@ -368,9 +368,9 @@ impl Value {
             Value::Scaler(x) => x.to_string_radix(radix, rational),
             Value::Matrix(x) => {
                 let mut s = String::from("[");
-                let rowmax = x.row_count();
+                let rowmax = x.rows();
                 for i in 0..rowmax {
-                    for j in 0..x.col_count() {
+                    for j in 0..x.cols() {
                         s += " ";
                         s += x[i][j].to_string_radix(radix, rational).as_str();
                     }
@@ -390,7 +390,7 @@ impl Value {
     pub fn lines(&self) -> usize {
         match self {
             Value::Scaler(_) => 1,
-            Value::Matrix(x) => x.row_count(),
+            Value::Matrix(x) => x.rows(),
         }
     }
 
@@ -482,11 +482,11 @@ impl Value {
                 Ok(m.into())
             }
             Value::Matrix(m) => {
-                if m.row_count() != 1 || m.col_count() != 3 {
+                if m.rows() != 1 || m.cols() != 3 {
                     Err(format!(
                         "Matrix of incorrect size [{}x{}] expected [1x3]",
-                        m.row_count(),
-                        m.col_count()
+                        m.rows(),
+                        m.cols()
                     ))
                 } else {
                     Ok(((m[0][0].clone()
@@ -526,7 +526,7 @@ impl Value {
             }
             Value::Matrix(x) => {
                 if x.is_square() {
-                    Matrix::one(x.row_count())
+                    Matrix::one(x.rows())
                         .map(Value::Matrix)
                         .map_err(|e| e.to_string())
                 } else {
