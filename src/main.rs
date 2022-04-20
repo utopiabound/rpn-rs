@@ -9,6 +9,7 @@ use rpn_rs::{
     stack::{Return, StackOps},
 };
 
+use clipboard::{ClipboardContext, ClipboardProvider};
 use fltk::{
     app, dialog,
     enums::{CallbackTrigger, Shortcut},
@@ -28,6 +29,8 @@ enum Message {
     About,
     Clear,
     Drop,
+    Copy,
+    Paste,
     Help,
     Input,
     Radix(Radix),
@@ -76,6 +79,20 @@ fn main() {
         MenuFlag::Normal,
         s,
         Message::Drop,
+    );
+    menu.add_emit(
+        "File/Copy\t",
+        Shortcut::Ctrl | 'c',
+        MenuFlag::Normal,
+        s,
+        Message::Copy,
+    );
+    menu.add_emit(
+        "File/Paste\t",
+        Shortcut::Ctrl | 'v',
+        MenuFlag::Normal,
+        s,
+        Message::Paste,
     );
     menu.add_emit(
         "File/Quit\t",
@@ -314,6 +331,17 @@ fn main() {
                 Message::About => dialog::message_default(
                     format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
                 ),
+                Message::Copy => table.get_selection(),
+                Message::Paste => {
+                    let clip: Result<ClipboardContext, _> = ClipboardProvider::new();
+                    if let Ok(mut clip) = clip {
+                        let v = clip.get_contents();
+                        log::debug!("Clipboard Contents: {v:?}");
+                        if let Ok(v) = v {
+                            input.set_value(&v);
+                        }
+                    }
+                }
                 Message::Help => help.show(),
                 Message::Quit => app::quit(),
             }

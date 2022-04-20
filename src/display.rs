@@ -1,6 +1,7 @@
 // Basically a table where the cell contents can be modified
 
 use crate::numbers::{Radix, Value};
+use clipboard::ClipboardProvider;
 use fltk::{
     draw, enums,
     prelude::{GroupExt, TableExt, WidgetBase, WidgetExt},
@@ -25,7 +26,6 @@ fn row_count(table_height: i32, lines: i32) -> i32 {
 impl StackOutput {
     pub fn new(width: i32, height: i32) -> Self {
         let mut table = table::Table::default()
-            .with_type(table::TableRowSelectMode::Single)
             .with_size(width, height)
             .center_of_parent();
         let data: Rc<RefCell<Vec<Value>>> = Rc::from(RefCell::from(vec![]));
@@ -72,7 +72,10 @@ impl StackOutput {
                 s.set_col_width(0, w);
                 true
             }
-            _ => false,
+            e => {
+                log::trace!("Table Event: {e:?}");
+                false
+            }
         });
 
         let data_c = data.clone();
@@ -142,16 +145,51 @@ impl StackOutput {
         draw::pop_clip();
     }
 
+    pub fn get_selection(&self) {
+        let (x1, _, _, _) = self.table.get_selection();
+        if x1 < 0 {
+            log::debug!("No Selection");
+            return;
+        }
+        let total_rows = self.table.rows();
+        let len = self.data.borrow().len() as i32;
+        let rn = len + x1 - total_rows;
+        if rn < 0 {
+            log::debug!("Selection is Empty");
+            return;
+        }
+
+        let clip: Result<clipboard::ClipboardContext, _> = ClipboardProvider::new();
+
+        if let Ok(mut clip) = clip {
+            if let Some(v) = self.data.borrow().get(rn as usize) {
+                let s = v.to_string_radix(
+                    *self.radix.borrow(),
+                    *self.rational.borrow(),
+                    true,
+                );
+                log::debug!("Selection: {s}");
+                if let Err(e) = clip.set_contents(s) {
+                    log::error!("Failed clipboard set: {e:?}");
+                }
+            }
+        }
+    }
+
     // The selected flag sets the color of the cell to a grayish color, otherwise white
     fn draw_data(txt: &str, x: i32, y: i32, w: i32, h: i32, selected: bool) {
         draw::push_clip(x, y, w, h);
         if selected {
-            draw::set_draw_color(enums::Color::from_u32(0x00D3_D3D3));
+            draw::set_draw_color(enums::Color::Selection);
         } else {
             draw::set_draw_color(enums::Color::BackGround);
         }
         draw::draw_rectf(x, y, w, h);
-        draw::set_draw_color(enums::Color::Gray0);
+        if selected {
+            draw::set_draw_color(enums::Color::White);
+        } else {
+            draw::set_draw_color(enums::Color::Gray0);
+        }
         draw::set_font(enums::Font::Screen, 18);
         draw::draw_text2(txt, x, y, w, h, enums::Align::Right);
         //draw::draw_rect(x, y, w, h);
