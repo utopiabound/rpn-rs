@@ -499,6 +499,22 @@ impl Value {
         }
     }
 
+    /// Truncate values to Integer
+    pub fn try_trunc(&self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(x.trunc()?.into()),
+            Value::Matrix(x) => {
+                let mut m = x.clone();
+                for i in 0..x.rows() {
+                    for j in 0..x.cols() {
+                        m[i][j] = x[i][j].trunc()?;
+                    }
+                }
+                Ok(m.into())
+            }
+        }
+    }
+
     // Matrix Only Functions
     pub fn try_det(self) -> Result<Self, String> {
         match self {

@@ -250,6 +250,7 @@ fn main() {
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
                         "dms" => stacks[0].try_unary(|a| a.try_dms_conv()),
                         "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
+                        "trunc" | "truncate" => stacks[0].try_unary(|a| a.try_trunc()),
                         "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
                         // Matrix Operations
                         "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
