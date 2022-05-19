@@ -102,7 +102,7 @@ impl TryFrom<&str> for Scaler {
 
     // @@ Add radix parsing
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let radixre = Regex::new(r"0([xXoObB])(.*)").unwrap();
+        let radixre = Regex::new(r"0([xXoObBdD])(.*)").unwrap();
 
         if value.contains(&['(', 'i'][..]) {
             // @@ better float parsing (pi, e)
