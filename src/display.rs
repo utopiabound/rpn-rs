@@ -163,11 +163,7 @@ impl StackOutput {
 
         if let Ok(mut clip) = clip {
             if let Some(v) = self.data.borrow().get(rn as usize) {
-                let s = v.to_string_radix(
-                    *self.radix.borrow(),
-                    *self.rational.borrow(),
-                    true,
-                );
+                let s = v.to_string_radix(*self.radix.borrow(), *self.rational.borrow(), true);
                 log::debug!("Selection: {s}");
                 if let Err(e) = clip.set_contents(s) {
                     log::error!("Failed clipboard set: {e:?}");

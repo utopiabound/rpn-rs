@@ -125,16 +125,16 @@ impl TryFrom<&str> for Scaler {
             Ok(Scaler::from(f))
         } else if let Some(caps) = radixre.captures(value) {
             match caps[1].to_lowercase().as_str() {
-                "b" => Rational::parse_radix(caps[2].to_string(), 2)
+                "b" => Rational::parse_radix(&caps[2], 2)
                     .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
-                "o" => Rational::parse_radix(caps[2].to_string(), 8)
+                "o" => Rational::parse_radix(&caps[2], 8)
                     .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
-                "d" => Rational::parse_radix(caps[2].to_string(), 10)
+                "d" => Rational::parse_radix(&caps[2], 10)
                     .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
-                "x" => Rational::parse_radix(caps[2].to_string(), 16)
+                "x" => Rational::parse_radix(&caps[2], 16)
                     .map(|v| Scaler::from(Rational::from(v)))
                     .map_err(|e| e.to_string()),
                 r => Err(format!("Invalid radix {r} in {value}")),
