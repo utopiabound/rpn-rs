@@ -40,6 +40,27 @@ impl<T: Into<Scaler>> From<T> for Value {
     }
 }
 
+trait MatrixIsDiagonal {
+    fn is_diagonal(&self) -> bool;
+}
+
+impl MatrixIsDiagonal for Matrix<Scaler> {
+    fn is_diagonal(&self) -> bool {
+        if self.is_square() {
+            for i in 0..self.rows() {
+                for j in 0..self.cols() {
+                    if i != j && self[i][j] != Scaler::zero() {
+                        return false;
+                    }
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Radix {
     Decimal,
@@ -346,6 +367,13 @@ impl Value {
         }
     }
 
+    fn is_matrix(&self) -> bool {
+        match self {
+            Value::Matrix(_) => true,
+            Value::Scaler(_) => false,
+        }
+    }
+
     pub fn sqrt(self) -> Self {
         match self {
             Value::Scaler(x) => Value::from(x.sqrt()),
@@ -410,9 +438,10 @@ impl Value {
     }
 
     pub fn try_root(self, other: Value) -> Result<Self, String> {
-        match (self, other) {
-            (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b.inv()))),
-            _ => Err("NYI".to_string()),
+        if other.is_matrix() {
+            Err("Unsuppored: matrix as exponent".to_string())
+        } else {
+            self.pow(other.inv()?)
         }
     }
 
@@ -620,29 +649,57 @@ impl Pow<Value> for Value {
     fn pow(self, other: Self) -> Self::Output {
         match (self.clone(), other) {
             (Value::Scaler(a), Value::Scaler(b)) => Ok(Value::from(a.pow(b))),
-            (Value::Matrix(_m), Value::Scaler(b)) => match b {
-                Scaler::Int(x) => {
-                    let (mut num, den) = x.into_numer_denom();
-                    if den != 1 {
-                        Err(format!("NYI (denom = {})", den))
-                    } else {
-                        let m = if num < 0 {
-                            num = -num;
-                            self.inv()?
-                        } else {
-                            self
-                        };
-                        let mut acc = m.clone();
-                        while num > 1 {
-                            acc = (acc * m.clone())?;
-                            num -= 1;
+            (Value::Matrix(m), Value::Scaler(b)) => {
+                if !m.is_square() {
+                    Err("Matrix is not square".to_string())
+                } else if b.is_zero() {
+                    Ok(Matrix::one(m.rows()).map_err(|e| e.to_string())?.into())
+                } else if m.is_diagonal() {
+                    let mut acc = Matrix::zero(m.rows(), m.cols()).map_err(|e| e.to_string())?;
+                    for i in 0..m.rows() {
+                        acc[i][i] = m[i][i].clone().pow(b.clone());
+                    }
+                    Ok(acc.into())
+                } else {
+                    match b {
+                        Scaler::Int(ref x) => {
+                            let (mut num, den) = x.clone().into_numer_denom();
+                            if den == 1 {
+                                let m = if num < 0 {
+                                    num = -num;
+                                    self.inv()?
+                                } else {
+                                    self
+                                };
+                                let mut acc = m.clone();
+                                while num > 1 {
+                                    acc = (acc * m.clone())?;
+                                    num -= 1;
+                                }
+                                Ok(acc)
+                            } else {
+                                Err(format!("NYI (matrix ^ {num}/{den})"))
+                            }
                         }
-                        Ok(acc)
+                        _ => Err("NYI: Matrix raised to non-whole power".to_string()),
                     }
                 }
-                _ => Err("Unsupported: Matrix raised to non-whole power".to_string()),
-            },
-            (_, Value::Matrix(_)) => Err("Unsupported: matrix as exponent".to_string()),
+            }
+            (Value::Scaler(a), Value::Matrix(m)) => {
+                if !m.is_square() {
+                    Err("Matrix is not square".to_string())
+                } else if m.is_diagonal() {
+                    let mut acc = Matrix::zero(m.rows(), m.cols()).map_err(|e| e.to_string())?;
+                    for i in 0..m.rows() {
+                        acc[i][i] = a.clone().pow(m[i][i].clone());
+                    }
+                    Ok(acc.into())
+                } else {
+                    // General case a^m == U * a^D * U^-1 where D is a diagonal matrix and m == U * D * U^-1
+                    Err("NYI: scaler ^ matrix".to_string())
+                }
+            }
+            (Value::Matrix(_), Value::Matrix(_)) => Err("Unsupported: matrix ^ matrix".to_string()),
         }
     }
 }
