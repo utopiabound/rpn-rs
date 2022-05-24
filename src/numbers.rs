@@ -125,18 +125,10 @@ impl TryFrom<&str> for Scaler {
             Ok(Scaler::from(f))
         } else if let Some(caps) = radixre.captures(value) {
             match caps[1].to_lowercase().as_str() {
-                "b" => Rational::parse_radix(&caps[2], 2)
-                    .map(|v| Scaler::from(Rational::from(v)))
-                    .map_err(|e| e.to_string()),
-                "o" => Rational::parse_radix(&caps[2], 8)
-                    .map(|v| Scaler::from(Rational::from(v)))
-                    .map_err(|e| e.to_string()),
-                "d" => Rational::parse_radix(&caps[2], 10)
-                    .map(|v| Scaler::from(Rational::from(v)))
-                    .map_err(|e| e.to_string()),
-                "x" => Rational::parse_radix(&caps[2], 16)
-                    .map(|v| Scaler::from(Rational::from(v)))
-                    .map_err(|e| e.to_string()),
+                "b" => Scaler::from_str_radix(&caps[2], 2),
+                "o" => Scaler::from_str_radix(&caps[2], 8),
+                "d" => Scaler::from_str_radix(&caps[2], 10),
+                "x" => Scaler::from_str_radix(&caps[2], 16),
                 r => Err(format!("Invalid radix {r} in {value}")),
             }
         } else if let Ok(v) = Rational::parse(&value) {
@@ -180,8 +172,10 @@ impl TryFrom<&str> for Value {
 
 impl Num for Scaler {
     type FromStrRadixErr = String;
-    fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-        Err("NYI".to_string()) // @@
+    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+        Rational::parse_radix(str, radix as i32)
+            .map(|v| Scaler::from(Rational::from(v)))
+            .map_err(|e| e.to_string())
     }
 }
 
