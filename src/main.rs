@@ -246,7 +246,7 @@ fn main() {
                         "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
                         "rem" | "%" => stacks[0].try_binary(|a, b| a % b),
                         "sqr" => stacks[0].try_unary(|a| a.clone() * a),
-                        "sqrt" => stacks[0].unary(|a| a.sqrt()),
+                        "sqrt" => stacks[0].try_unary(|a| a.try_sqrt()),
                         "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
                         "dms" => stacks[0].try_unary(|a| a.try_dms_conv()),
                         "root" => stacks[0].try_binary(|a, b| a.try_root(b)),

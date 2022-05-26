@@ -121,13 +121,10 @@ impl From<Complex> for Scaler {
 impl TryFrom<&str> for Scaler {
     type Error = String;
 
-    // @@ Add radix parsing
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let radixre = Regex::new(r"0([xXoObBdD])(.*)").unwrap();
 
         if value.contains(&['(', 'i'][..]) {
-            // @@ better float parsing (pi, e)
-
             // Change "1+2i" -> "(1 2)"
             let re = Regex::new(r"(?P<r>\d+([.]\d+)?)\s*\+\s*(?P<i>\d+([.]\d+)?)i").unwrap();
             let value = re.replace(value, "($r $i)").into_owned();
@@ -205,19 +202,6 @@ fn is_integer(x: &Rational) -> bool {
 }
 
 impl Scaler {
-    /// Square Root
-    pub fn sqrt(self) -> Self {
-        match self {
-            Scaler::Int(x) => {
-                // @@ - try to keep as rational
-                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(Complex::from(f).sqrt())
-            }
-            Scaler::Float(x) => Scaler::from(Complex::from(x).sqrt()),
-            Scaler::Complex(x) => Scaler::from(x.sqrt()),
-        }
-    }
-
     /// Natural Logarithm
     pub fn ln(self) -> Self {
         match self {
@@ -367,22 +351,8 @@ impl Value {
         }
     }
 
-    fn is_matrix(&self) -> bool {
-        match self {
-            Value::Matrix(_) => true,
-            Value::Scaler(_) => false,
-        }
-    }
-
-    pub fn sqrt(self) -> Self {
-        match self {
-            Value::Scaler(x) => Value::from(x.sqrt()),
-            Value::Matrix(_) => {
-                // https://en.wikipedia.org/wiki/Square_root_of_a_2_by_2_matrix
-                // https://en.wikipedia.org/wiki/Square_root_of_a_matrix
-                Value::Scaler(Scaler::Float(Float::with_val(1, Special::Nan)))
-            }
-        }
+    pub fn try_sqrt(self) -> Result<Self, String> {
+        self.try_root(2.into())
     }
 
     pub fn to_string_radix(&self, radix: Radix, rational: bool, flat: bool) -> String {
@@ -421,7 +391,7 @@ impl Value {
             Value::Scaler(x) => x
                 .factor()
                 .map(|x| x.into_iter().map(Value::Scaler).collect()),
-            Value::Matrix(_) => Err("No Factor for Matricies".to_string()), // @@ is this true?
+            Value::Matrix(_) => Err("No prime factors of matricies".to_string()),
         }
     }
 
@@ -438,11 +408,7 @@ impl Value {
     }
 
     pub fn try_root(self, other: Value) -> Result<Self, String> {
-        if other.is_matrix() {
-            Err("Unsuppored: matrix as exponent".to_string())
-        } else {
-            self.pow(other.inv()?)
-        }
+        self.pow(other.inv()?)
     }
 
     pub fn try_rshift(&self, b: &Value) -> Result<Self, String> {
@@ -678,6 +644,8 @@ impl Pow<Value> for Value {
                                 }
                                 Ok(acc)
                             } else {
+                                // https://en.wikipedia.org/wiki/Square_root_of_a_2_by_2_matrix
+                                // https://en.wikipedia.org/wiki/Square_root_of_a_matrix
                                 Err(format!("NYI (matrix ^ {num}/{den})"))
                             }
                         }
@@ -953,10 +921,15 @@ impl Pow<Scaler> for Scaler {
     fn pow(self, other: Self) -> Self::Output {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => {
-                // @@ attempt to maintain int
                 let fa: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                let fb: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(fa.pow(fb))
+                if b == (1, 2) {
+                    Scaler::from(fa.sqrt())
+                } else if b == (1, 3) {
+                    Scaler::from(fa.cbrt())
+                } else {
+                    let fb: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
+                    Scaler::from(fa.pow(fb))
+                }
             }
             (Scaler::Int(a), Scaler::Float(b)) => {
                 let fa: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
@@ -1050,10 +1023,11 @@ impl Signed for Scaler {
         }
     }
     fn abs_sub(&self, other: &Self) -> Self {
-        // @@ if self < other
-        // return 0
-        // else
-        self.clone() - other.clone()
+        if self < other {
+            0.into()
+        } else {
+            self.clone() - other.clone()
+        }
     }
     fn signum(&self) -> Self {
         match self {
@@ -1069,14 +1043,14 @@ impl Signed for Scaler {
         match self {
             Scaler::Int(x) => x.clone().signum() == 1,
             Scaler::Float(x) => x.is_sign_positive(),
-            Scaler::Complex(_) => false, // @@
+            Scaler::Complex(x) => x.real().is_sign_positive(),
         }
     }
     fn is_negative(&self) -> bool {
         match self {
             Scaler::Int(x) => x.clone().signum() == -1,
             Scaler::Float(x) => x.is_sign_negative(),
-            Scaler::Complex(_) => false, // @@
+            Scaler::Complex(x) => x.real().is_sign_negative(),
         }
     }
 }
