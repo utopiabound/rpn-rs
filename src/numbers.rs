@@ -471,16 +471,16 @@ impl Value {
                 Ok(m.into())
             }
             Value::Matrix(m) => {
-                if m.rows() != 1 || m.cols() != 3 {
+                if m.rows() != 1 || m.cols() > 3 {
                     Err(format!(
                         "Matrix of incorrect size [{}x{}] expected [1x3]",
                         m.rows(),
                         m.cols()
                     ))
                 } else {
-                    Ok(((m[0][0].clone()
-                        + m[0][1].clone() / Scaler::from(60)
-                        + m[0][2].clone() / Scaler::from(3600))
+                    Ok(((m[0].get(0).cloned().unwrap_or_default()
+                        + m[0].get(1).cloned().unwrap_or_default() / Scaler::from(60)
+                        + m[0].get(2).cloned().unwrap_or_default() / Scaler::from(3600))
                         % Scaler::from(360))
                     .into())
                 }
@@ -1104,6 +1104,12 @@ impl std::iter::Sum for Scaler {
             a += b;
         }
         a
+    }
+}
+
+impl Default for Scaler {
+    fn default() -> Self {
+        Scaler::zero()
     }
 }
 
