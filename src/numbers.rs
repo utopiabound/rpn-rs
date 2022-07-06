@@ -267,11 +267,7 @@ impl Scaler {
 
     fn get_usize(self) -> Option<usize> {
         if let Scaler::Int(x) = self {
-            if is_integer(&x) {
-                x.numer().to_usize()
-            } else {
-                None
-            }
+            is_integer(&x).then(|| x.numer().to_usize()).flatten()
         } else {
             None
         }
@@ -872,45 +868,15 @@ impl PartialOrd for Scaler {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => a.partial_cmp(b),
             (Scaler::Int(a), Scaler::Float(b)) => a.partial_cmp(b),
-            (Scaler::Int(a), Scaler::Complex(b)) => {
-                if a == b {
-                    Some(Ordering::Equal)
-                } else {
-                    None
-                }
-            }
+            (Scaler::Int(a), Scaler::Complex(b)) => (a == b).then_some(Ordering::Equal),
 
             (Scaler::Float(a), Scaler::Int(b)) => a.partial_cmp(b),
             (Scaler::Float(a), Scaler::Float(b)) => a.partial_cmp(b),
-            (Scaler::Float(a), Scaler::Complex(b)) => {
-                if a == b {
-                    Some(Ordering::Equal)
-                } else {
-                    None
-                }
-            }
+            (Scaler::Float(a), Scaler::Complex(b)) => (a == b).then_some(Ordering::Equal),
 
-            (Scaler::Complex(a), Scaler::Int(b)) => {
-                if a == b {
-                    Some(Ordering::Equal)
-                } else {
-                    None
-                }
-            }
-            (Scaler::Complex(a), Scaler::Float(b)) => {
-                if a == b {
-                    Some(Ordering::Equal)
-                } else {
-                    None
-                }
-            }
-            (Scaler::Complex(a), Scaler::Complex(b)) => {
-                if a == b {
-                    Some(Ordering::Equal)
-                } else {
-                    None
-                }
-            }
+            (Scaler::Complex(a), Scaler::Int(b)) => (a == b).then_some(Ordering::Equal),
+            (Scaler::Complex(a), Scaler::Float(b)) => (a == b).then_some(Ordering::Equal),
+            (Scaler::Complex(a), Scaler::Complex(b)) => (a == b).then_some(Ordering::Equal),
         }
     }
 }
