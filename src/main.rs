@@ -3,7 +3,11 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
-use rpn_rs::{
+mod display;
+mod numbers;
+mod stack;
+
+use crate::{
     display::StackOutput,
     numbers::{Radix, Value},
     stack::{Return, StackOps},

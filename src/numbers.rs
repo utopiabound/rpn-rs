@@ -61,7 +61,7 @@ impl MatrixIsDiagonal for Matrix<Scaler> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Radix {
     Decimal,
     Hex,
