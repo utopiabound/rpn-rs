@@ -12,3 +12,6 @@ RPN-rs is an RPN calculator written in rust using FLTK.
 
 ## Inspired by
  * [GRPN](https://github.com/utopiabound/grpn)
+
+## Known Issues
+* Matrix Inverse not always correct [https://github.com/wiebecommajonas/libmat/issues/4]
