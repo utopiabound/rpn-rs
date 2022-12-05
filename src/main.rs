@@ -220,7 +220,7 @@ fn main() {
                                 Return::Noop
                             }
                         }
-                        "rollu" | "ru" | "rup" | "rollup" => {
+                        "roll" | "rollu" | "ru" | "rup" | "rollup" => {
                             if let Some(x) = stacks[0].pop() {
                                 stacks[0].insert(0, x);
                                 Return::Ok
@@ -228,7 +228,7 @@ fn main() {
                                 Return::Noop
                             }
                         }
-                        "roll" | "rolld" | "rd" | "rdown" | "rolldown" => {
+                        "rolld" | "rd" | "rdown" | "rolldown" => {
                             if stacks[0].is_empty() {
                                 Return::Noop
                             } else {
