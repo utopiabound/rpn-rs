@@ -260,6 +260,7 @@ fn main() {
                         "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
                         "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
                         "ident" | "identity" => stacks[0].try_unary(Value::identity),
+                        "rref" => stacks[0].try_unary(|a| a.try_rref()),
                         // Binary Operations
                         "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
                         ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),

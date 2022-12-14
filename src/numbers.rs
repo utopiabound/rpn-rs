@@ -40,11 +40,12 @@ impl<T: Into<Scaler>> From<T> for Value {
     }
 }
 
-trait MatrixIsDiagonal {
+trait RpnMatrixExt {
     fn is_diagonal(&self) -> bool;
+    fn rref(&self) -> Self;
 }
 
-impl MatrixIsDiagonal for Matrix<Scaler> {
+impl RpnMatrixExt for Matrix<Scaler> {
     fn is_diagonal(&self) -> bool {
         if self.is_square() {
             for i in 0..self.rows() {
@@ -58,6 +59,54 @@ impl MatrixIsDiagonal for Matrix<Scaler> {
         } else {
             false
         }
+    }
+
+    // Reduced Row Echelon Form
+    fn rref(&self) -> Self {
+        let mut mat = self.clone();
+        let mut col = 0;
+        let mut row = 0;
+        while row < mat.rows() && col < mat.cols() {
+            if mat[row][col].is_zero() {
+                // find non-zero
+                for r in row..mat.rows() {
+                    if !mat[r][0].is_zero() {
+                        // swap r -> row
+                        let old = mat[row].to_vec();
+                        for i in 0..mat.cols() {
+                            mat[row][i] = mat[r][i].clone();
+                            mat[r][i] = old[i].clone();
+                        }
+                        break;
+                    }
+                }
+            }
+            if mat[row][col].is_zero() {
+                col += 1;
+                continue;
+            }
+            // ensure first item is 1
+            if !mat[row][col].is_one() {
+                let val = mat[row][col].clone();
+                for c in col..mat.cols() {
+                    mat[row][c] /= val.clone();
+                }
+            }
+            // reduce all other rows
+            for r in 0..mat.rows() {
+                if mat[r][col].is_zero() || r == row {
+                    continue;
+                }
+                let val = mat[r][col].clone();
+                for c in col..mat.cols() {
+                    let x = mat[row][c].clone();
+                    mat[r][c] -= val.clone() * x;
+                }
+            }
+            row += 1;
+            col += 1;
+        }
+        mat
     }
 }
 
@@ -508,6 +557,13 @@ impl Value {
         }
     }
 
+    pub fn try_rref(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(_) => Err("No determinate for Scaler".to_string()),
+            Value::Matrix(x) => Ok(Value::Matrix(x.rref())),
+        }
+    }
+
     pub fn try_transpose(self) -> Result<Self, String> {
         match self {
             Value::Scaler(_) => Err("No Transpose for Scaler".to_string()),
@@ -789,8 +845,8 @@ impl Inv for Scaler {
     fn inv(self) -> Self::Output {
         match self {
             Scaler::Int(x) => Scaler::from(Rational::from((x.denom(), x.numer()))),
-            Scaler::Float(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
-            Scaler::Complex(x) => Scaler::from(Complex::with_val(FLOAT_PRECISION, (1.0_f32) / x)),
+            Scaler::Float(x) => Scaler::from(x.recip()),
+            Scaler::Complex(x) => Scaler::from(x.recip()),
         }
     }
 }
@@ -1108,6 +1164,19 @@ mod test {
         assert_eq!(b, c);
         assert!(b.is_zero());
         assert!(c.is_zero());
+    }
+
+    #[test]
+    fn test_matrix_rref() {
+        let a: Matrix<Scaler> = Matrix::from(matrix! {16.into(), 2.into(), 3.into(), 13.into();
+        5.into(), 11.into(), 10.into(), 8.into();
+        9.into(), 7.into(), 6.into(), 12.into();
+        4.into(), 14.into(), 15.into(), 1.into()});
+        let b: Matrix<Scaler> = Matrix::from(matrix! {1.into(), 0.into(), 0.into(), 1.into();
+        0.into(), 1.into(), 0.into(), 3.into();
+        0.into(), 0.into(), 1.into(), (-3).into();
+        0.into(), 0.into(), 0.into(), 0.into()});
+        assert_eq!(a.rref(), b);
     }
 
     #[test]
