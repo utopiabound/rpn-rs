@@ -72,10 +72,9 @@ impl RpnMatrixExt for Matrix<Scaler> {
                 for r in row..mat.rows() {
                     if !mat[r][0].is_zero() {
                         // swap r -> row
-                        let old = mat[row].to_vec();
-                        for i in 0..mat.cols() {
+                        for (i, item) in mat[row].to_vec().iter().cloned().enumerate() {
                             mat[row][i] = mat[r][i].clone();
-                            mat[r][i] = old[i].clone();
+                            mat[r][i] = item;
                         }
                         break;
                     }
@@ -181,13 +180,13 @@ impl TryFrom<&str> for Scaler {
             let re = Regex::new(r"(?P<i>\d+([.]\d+)?)i").unwrap();
             let value = re.replace(&value, "(0 $i)").into_owned();
 
-            let v = Complex::parse(&value).map_err(|e| e.to_string())?;
+            let v = Complex::parse(value).map_err(|e| e.to_string())?;
             let c = Complex::with_val(FLOAT_PRECISION, v);
             Ok(Scaler::from(c))
         } else if value.contains('[') {
             Err("Parsing Matrix as Scaler".to_string())
         } else if value.contains('.') {
-            let v = Float::parse(&value).map_err(|e| e.to_string())?;
+            let v = Float::parse(value).map_err(|e| e.to_string())?;
             let f = Float::with_val(FLOAT_PRECISION, v);
             Ok(Scaler::from(f))
         } else if let Some(caps) = radixre.captures(value) {
@@ -198,7 +197,7 @@ impl TryFrom<&str> for Scaler {
                 "x" => Scaler::from_str_radix(&caps[2], 16),
                 r => Err(format!("Invalid radix {r} in {value}")),
             }
-        } else if let Ok(v) = Rational::parse(&value) {
+        } else if let Ok(v) = Rational::parse(value) {
             Ok(Scaler::from(Rational::from(v)))
         } else {
             Err(format!("Unknown value: {value}"))

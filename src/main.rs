@@ -184,177 +184,179 @@ fn main() {
     help.hide();
 
     while app.wait() {
-        if let Some(val) = r.recv() {
-            error.set_value("");
-            let mut need_redisplay = false;
-            match val {
-                Message::Input => {
-                    stacks.push_front(stacks[0].clone());
-                    let value = input.value();
-                    input.set_value("");
+        let Some(val) = r.recv() else {
+            continue
+        };
+        error.set_value("");
+        let mut need_redisplay = false;
+        match val {
+            Message::Input => {
+                stacks.push_front(stacks[0].clone());
+                let value = input.value();
+                input.set_value("");
 
-                    let rv = match value.as_str() {
-                        "q" | "quit" => {
-                            app::quit();
+                let rv = match value.as_str() {
+                    "q" | "quit" => {
+                        app::quit();
+                        Return::Noop
+                    }
+                    // Stack Operations
+                    "undo" | "u" => {
+                        if stacks.len() > 2 {
+                            stacks.pop_front();
+                            stacks.pop_front();
+                            Return::Ok
+                        } else {
+                            Return::Err("No further undos in buffer".to_string())
+                        }
+                    }
+                    "clear" => {
+                        stacks.clear();
+                        stacks.push_front(vec![]);
+                        Return::Ok
+                    }
+                    "drop" | "pop" | "del" | "delete" => {
+                        if stacks[0].pop().is_some() {
+                            Return::Ok
+                        } else {
                             Return::Noop
                         }
-                        // Stack Operations
-                        "undo" | "u" => {
-                            if stacks.len() > 2 {
-                                stacks.pop_front();
-                                stacks.pop_front();
-                                Return::Ok
-                            } else {
-                                Return::Err("No further undos in buffer".to_string())
-                            }
-                        }
-                        "clear" => {
-                            stacks.clear();
-                            stacks.push_front(vec![]);
-                            Return::Ok
-                        }
-                        "drop" | "pop" | "del" | "delete" => {
-                            if stacks[0].pop().is_some() {
-                                Return::Ok
-                            } else {
-                                Return::Noop
-                            }
-                        }
-                        "roll" | "rollu" | "ru" | "rup" | "rollup" => {
-                            if let Some(x) = stacks[0].pop() {
+                    }
+                    "roll" | "rollu" | "ru" | "rup" | "rollup" => {
+                        match stacks[0].pop() {
+                            Some(x) => {
                                 stacks[0].insert(0, x);
                                 Return::Ok
-                            } else {
-                                Return::Noop
                             }
+                            None => Return::Noop,
                         }
-                        "rolld" | "rd" | "rdown" | "rolldown" => {
-                            if stacks[0].is_empty() {
-                                Return::Noop
-                            } else {
-                                let x = stacks[0].remove(0);
-                                stacks[0].push(x);
+                    }
+                    "rolld" | "rd" | "rdown" | "rolldown" => {
+                        if stacks[0].is_empty() {
+                            Return::Noop
+                        } else {
+                            let x = stacks[0].remove(0);
+                            stacks[0].push(x);
+                            Return::Ok
+                        }
+                    }
+                    "sw" | "swap" => stacks[0].binary_v(|a, b| vec![b, a]),
+                    "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
+                    // Arithmatic Operations
+                    "+" => stacks[0].try_binary(|a, b| a + b),
+                    "*" => stacks[0].try_binary(|a, b| a * b),
+                    "-" => stacks[0].try_binary(|a, b| a - b),
+                    "/" => stacks[0].try_binary(|a, b| a / b),
+                    "inv" => stacks[0].try_unary(|a| a.inv()),
+                    "ln" => stacks[0].try_unary(|a| a.try_ln()),
+                    "log" => stacks[0].try_unary(|a| a.try_log10()),
+                    "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
+                    "rem" | "%" => stacks[0].try_binary(|a, b| a % b),
+                    "sqr" => stacks[0].try_unary(|a| a.clone() * a),
+                    "sqrt" => stacks[0].try_unary(|a| a.try_sqrt()),
+                    "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
+                    "dms" => stacks[0].try_unary(|a| a.try_dms_conv()),
+                    "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
+                    "trunc" | "truncate" => stacks[0].try_unary(|a| a.try_trunc()),
+                    "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
+                    // Matrix Operations
+                    "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
+                    "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
+                    "ident" | "identity" => stacks[0].try_unary(Value::identity),
+                    "rref" => stacks[0].try_unary(|a| a.try_rref()),
+                    // Binary Operations
+                    "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
+                    ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
+                    // or, and, xor, nand
+                    // Constants
+                    "e" => {
+                        stacks[0].push(Value::e());
+                        Return::Ok
+                    }
+                    "i" => {
+                        stacks[0].push(Value::i());
+                        Return::Ok
+                    }
+                    "pi" => {
+                        stacks[0].push(Value::pi());
+                        Return::Ok
+                    }
+                    v => {
+                        let (v, op) = if v.ends_with(&['*', '/', '+', '-'][..]) {
+                            let (val, op) = v.split_at(v.len() - 1);
+
+                            (val, Some(op))
+                        } else {
+                            (v, None)
+                        };
+                        match Value::try_from(v) {
+                            Ok(v) => {
+                                stacks[0].push(v);
+                                if let Some(op) = op {
+                                    input.set_value(op);
+                                    s.send(Message::Input);
+                                }
                                 Return::Ok
                             }
-                        }
-                        "sw" | "swap" => stacks[0].binary_v(|a, b| vec![b, a]),
-                        "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
-                        // Arithmatic Operations
-                        "+" => stacks[0].try_binary(|a, b| a + b),
-                        "*" => stacks[0].try_binary(|a, b| a * b),
-                        "-" => stacks[0].try_binary(|a, b| a - b),
-                        "/" => stacks[0].try_binary(|a, b| a / b),
-                        "inv" => stacks[0].try_unary(|a| a.inv()),
-                        "ln" => stacks[0].try_unary(|a| a.try_ln()),
-                        "log" => stacks[0].try_unary(|a| a.try_log10()),
-                        "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
-                        "rem" | "%" => stacks[0].try_binary(|a, b| a % b),
-                        "sqr" => stacks[0].try_unary(|a| a.clone() * a),
-                        "sqrt" => stacks[0].try_unary(|a| a.try_sqrt()),
-                        "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
-                        "dms" => stacks[0].try_unary(|a| a.try_dms_conv()),
-                        "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
-                        "trunc" | "truncate" => stacks[0].try_unary(|a| a.try_trunc()),
-                        "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
-                        // Matrix Operations
-                        "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
-                        "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
-                        "ident" | "identity" => stacks[0].try_unary(Value::identity),
-                        "rref" => stacks[0].try_unary(|a| a.try_rref()),
-                        // Binary Operations
-                        "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
-                        ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
-                        // or, and, xor, nand
-                        // Constants
-                        "e" => {
-                            stacks[0].push(Value::e());
-                            Return::Ok
-                        }
-                        "i" => {
-                            stacks[0].push(Value::i());
-                            Return::Ok
-                        }
-                        "pi" => {
-                            stacks[0].push(Value::pi());
-                            Return::Ok
-                        }
-                        v => {
-                            let (v, op) = if v.ends_with(&['*', '/', '+', '-'][..]) {
-                                let (val, op) = v.split_at(v.len() - 1);
-
-                                (val, Some(op))
-                            } else {
-                                (v, None)
-                            };
-                            match Value::try_from(v) {
-                                Ok(v) => {
-                                    stacks[0].push(v);
-                                    if let Some(op) = op {
-                                        input.set_value(op);
-                                        s.send(Message::Input);
-                                    }
-                                    Return::Ok
-                                }
-                                Err(e) => Return::Err(e),
-                            }
-                        }
-                    };
-
-                    match rv {
-                        Return::Ok => {
-                            if stacks.len() == stack_undo {
-                                stacks.pop_back();
-                            }
-                            need_redisplay = true;
-                            log::debug!("writing: {:?}", stacks[0]);
-                        }
-                        Return::Noop => {
-                            stacks.pop_front();
-                        }
-                        Return::Err(e) => {
-                            stacks.pop_front();
-                            error.set_value(&e);
+                            Err(e) => Return::Err(e),
                         }
                     }
-                }
-                Message::Drop => need_redisplay = stacks[0].pop().is_some(),
-                Message::Radix(r) => {
-                    table.set_radix(r);
-                    need_redisplay = true;
-                }
-                Message::Rational => {
-                    let item = menu
-                        .find_item("Options/Rational\t")
-                        .expect("Failed to find Rational Option");
-                    table.set_rational(item.value());
-                    need_redisplay = true;
-                }
-                Message::Clear => {
-                    stacks.clear();
-                    stacks.push_front(vec![]);
-                    need_redisplay = true;
-                }
-                Message::About => dialog::message_default(
-                    format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
-                ),
-                Message::Copy => table.get_selection(),
-                Message::Paste => {
-                    let clip: Result<ClipboardContext, _> = ClipboardProvider::new();
-                    if let Ok(mut clip) = clip {
-                        let v = clip.get_contents();
-                        log::debug!("Clipboard Contents: {v:?}");
-                        if let Ok(v) = v {
-                            input.set_value(&v);
+                };
+
+                match rv {
+                    Return::Ok => {
+                        if stacks.len() == stack_undo {
+                            stacks.pop_back();
                         }
+                        need_redisplay = true;
+                        log::debug!("writing: {:?}", stacks[0]);
+                    }
+                    Return::Noop => {
+                        stacks.pop_front();
+                    }
+                    Return::Err(e) => {
+                        stacks.pop_front();
+                        error.set_value(&e);
                     }
                 }
-                Message::Help => help.show(),
-                Message::Quit => app::quit(),
             }
-            if need_redisplay {
-                table.set_data(&stacks[0]);
-                table.redraw();
+            Message::Drop => need_redisplay = stacks[0].pop().is_some(),
+            Message::Radix(r) => {
+                table.set_radix(r);
+                need_redisplay = true;
             }
+            Message::Rational => {
+                let item = menu
+                    .find_item("Options/Rational\t")
+                    .expect("Failed to find Rational Option");
+                table.set_rational(item.value());
+                need_redisplay = true;
+            }
+            Message::Clear => {
+                stacks.clear();
+                stacks.push_front(vec![]);
+                need_redisplay = true;
+            }
+            Message::About => dialog::message_default(
+                format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
+            ),
+            Message::Copy => table.get_selection(),
+            Message::Paste => {
+                let clip: Result<ClipboardContext, _> = ClipboardProvider::new();
+                if let Ok(mut clip) = clip {
+                    let v = clip.get_contents();
+                    log::debug!("Clipboard Contents: {v:?}");
+                    if let Ok(v) = v {
+                        input.set_value(&v);
+                    }
+                }
+            }
+            Message::Help => help.show(),
+            Message::Quit => app::quit(),
+        }
+        if need_redisplay {
+            table.set_data(&stacks[0]);
+            table.redraw();
         }
     }
 }
