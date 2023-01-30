@@ -10,6 +10,12 @@ RPN-rs is an RPN calculator written in rust using FLTK.
    * Matrixes of the above
  * Simple stack view
 
+## Linux (Fedora) Build Requires
+* libstdc++-static
+* libpng-devel
+* libjpeg-devel
+* zlib-devel
+
 ## Inspired by
  * [GRPN](https://github.com/utopiabound/grpn)
 

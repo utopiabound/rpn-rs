@@ -222,15 +222,13 @@ fn main() {
                             Return::Noop
                         }
                     }
-                    "roll" | "rollu" | "ru" | "rup" | "rollup" => {
-                        match stacks[0].pop() {
-                            Some(x) => {
-                                stacks[0].insert(0, x);
-                                Return::Ok
-                            }
-                            None => Return::Noop,
+                    "roll" | "rollu" | "ru" | "rup" | "rollup" => match stacks[0].pop() {
+                        Some(x) => {
+                            stacks[0].insert(0, x);
+                            Return::Ok
                         }
-                    }
+                        None => Return::Noop,
+                    },
                     "rolld" | "rd" | "rdown" | "rolldown" => {
                         if stacks[0].is_empty() {
                             Return::Noop

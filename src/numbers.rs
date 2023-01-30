@@ -448,7 +448,7 @@ impl Value {
                 return Ok(Value::from(a.numer().clone().rem_euc(b.numer())));
             }
         }
-        Err(format!("{:?} mod {:?} is not INT mod INT", self, b))
+        Err(format!("{self:?} mod {b:?} is not INT mod INT"))
     }
 
     pub fn try_root(self, other: Value) -> Result<Self, String> {
@@ -469,7 +469,7 @@ impl Value {
                 }
             }
         }
-        Err(format!("{:?} >> {:?} is not REAL >> INTEGER(u32)", self, b))
+        Err(format!("{self:?} >> {b:?} is not REAL >> INTEGER(u32)"))
     }
 
     pub fn try_lshift(&self, b: &Value) -> Result<Self, String> {
@@ -486,7 +486,7 @@ impl Value {
                 }
             }
         }
-        Err(format!("{:?} << {:?} is not REAL >> INTEGER(u32)", self, b))
+        Err(format!("{self:?} << {b:?} is not REAL >> INTEGER(u32)"))
     }
 
     pub fn try_ln(self) -> Result<Self, String> {
