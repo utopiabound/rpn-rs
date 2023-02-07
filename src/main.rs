@@ -245,11 +245,12 @@ fn main() {
                     "*" => stacks[0].try_binary(|a, b| a * b),
                     "-" => stacks[0].try_binary(|a, b| a - b),
                     "/" => stacks[0].try_binary(|a, b| a / b),
+                    "!" => stacks[0].try_unary(|a| a.try_factorial()),
                     "inv" => stacks[0].try_unary(|a| a.inv()),
                     "ln" => stacks[0].try_unary(|a| a.try_ln()),
                     "log" => stacks[0].try_unary(|a| a.try_log10()),
                     "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
-                    "rem" | "%" => stacks[0].try_binary(|a, b| a % b),
+                    "%" | "rem" => stacks[0].try_binary(|a, b| a % b),
                     "sqr" => stacks[0].try_unary(|a| a.clone() * a),
                     "sqrt" => stacks[0].try_unary(|a| a.try_sqrt()),
                     "^" | "pow" => stacks[0].try_binary(|a, b| a.pow(b)),
@@ -263,8 +264,8 @@ fn main() {
                     "ident" | "identity" => stacks[0].try_unary(Value::identity),
                     "rref" => stacks[0].try_unary(|a| a.try_rref()),
                     // Binary Operations
-                    "<<" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
-                    ">>" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
+                    "<<" | "lshift" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
+                    ">>" | "rshift" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
                     // or, and, xor, nand
                     // Constants
                     "e" => {
@@ -280,7 +281,7 @@ fn main() {
                         Return::Ok
                     }
                     v => {
-                        let (v, op) = if v.ends_with(&['*', '/', '+', '-'][..]) {
+                        let (v, op) = if v.ends_with(&['*', '/', '+', '-', '!', '%', '^'][..]) {
                             let (val, op) = v.split_at(v.len() - 1);
 
                             (val, Some(op))
