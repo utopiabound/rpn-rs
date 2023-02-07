@@ -42,7 +42,6 @@ impl<T: Into<Scaler>> From<T> for Value {
 
 trait RpnMatrixExt {
     fn is_diagonal(&self) -> bool;
-    fn rref(&self) -> Self;
 }
 
 impl RpnMatrixExt for Matrix<Scaler> {
@@ -59,53 +58,6 @@ impl RpnMatrixExt for Matrix<Scaler> {
         } else {
             false
         }
-    }
-
-    // Reduced Row Echelon Form
-    fn rref(&self) -> Self {
-        let mut mat = self.clone();
-        let mut col = 0;
-        let mut row = 0;
-        while row < mat.rows() && col < mat.cols() {
-            if mat[row][col].is_zero() {
-                // find non-zero
-                for r in row..mat.rows() {
-                    if !mat[r][0].is_zero() {
-                        // swap r -> row
-                        for (i, item) in mat[row].to_vec().iter().cloned().enumerate() {
-                            mat[row][i] = mat[r][i].clone();
-                            mat[r][i] = item;
-                        }
-                        break;
-                    }
-                }
-            }
-            if mat[row][col].is_zero() {
-                col += 1;
-                continue;
-            }
-            // ensure first item is 1
-            if !mat[row][col].is_one() {
-                let val = mat[row][col].clone();
-                for c in col..mat.cols() {
-                    mat[row][c] /= val.clone();
-                }
-            }
-            // reduce all other rows
-            for r in 0..mat.rows() {
-                if mat[r][col].is_zero() || r == row {
-                    continue;
-                }
-                let val = mat[r][col].clone();
-                for c in col..mat.cols() {
-                    let x = mat[row][c].clone();
-                    mat[r][c] -= val.clone() * x;
-                }
-            }
-            row += 1;
-            col += 1;
-        }
-        mat
     }
 }
 
@@ -436,6 +388,22 @@ impl Value {
                 .factor()
                 .map(|x| x.into_iter().map(Value::Scaler).collect()),
             Value::Matrix(_) => Err("No prime factors of matricies".to_string()),
+        }
+    }
+
+    pub fn try_factorial(self) -> Result<Value, String> {
+        match self {
+            Value::Scaler(Scaler::Int(x)) if x.denom().to_u32() == Some(1) && x.clone().signum() >= 0 => {
+                let max = x.numer();
+                let mut n = Integer::from(1);
+                let mut i = Integer::from(2);
+                while i <= *max {
+                    n *= i.clone();
+                    i += 1;
+                }
+                Ok(n.into())
+            }
+            _ => Err(format!("{self:?}! is not INT!"))
         }
     }
 
@@ -1163,19 +1131,6 @@ mod test {
         assert_eq!(b, c);
         assert!(b.is_zero());
         assert!(c.is_zero());
-    }
-
-    #[test]
-    fn test_matrix_rref() {
-        let a: Matrix<Scaler> = Matrix::from(matrix! {16.into(), 2.into(), 3.into(), 13.into();
-        5.into(), 11.into(), 10.into(), 8.into();
-        9.into(), 7.into(), 6.into(), 12.into();
-        4.into(), 14.into(), 15.into(), 1.into()});
-        let b: Matrix<Scaler> = Matrix::from(matrix! {1.into(), 0.into(), 0.into(), 1.into();
-        0.into(), 1.into(), 0.into(), 3.into();
-        0.into(), 0.into(), 1.into(), (-3).into();
-        0.into(), 0.into(), 0.into(), 0.into()});
-        assert_eq!(a.rref(), b);
     }
 
     #[test]

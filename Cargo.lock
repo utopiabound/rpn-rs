@@ -123,9 +123,9 @@ dependencies = [
 
 [[package]]
 name = "fltk"
-version = "1.3.28"
+version = "1.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6eb47520d49c5b2fd4ebde6db3833508d143f44897e28e94e64d0e0315532261"
+checksum = "fc63b0666029925e08fc4a624ef193bdf3a748f6f22d3ce449375ba749386e74"
 dependencies = [
  "bitflags",
  "crossbeam-channel",
@@ -136,9 +136,9 @@ dependencies = [
 
 [[package]]
 name = "fltk-sys"
-version = "1.3.28"
+version = "1.3.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7d90196c53412537123d7911c3a8458e09f9e1fe73e0e97802929ecf2d330fa"
+checksum = "92ee5040d142b901116910fa98e31d76731f4dfa596f85faeda757adc9b36f35"
 dependencies = [
  "cmake",
 ]
@@ -177,7 +177,7 @@ checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
 [[package]]
 name = "libmat"
 version = "0.2.0"
-source = "git+https://github.com/wiebecommajonas/libmat?branch=master#098e768a49da87e524641e43907dc5b58fb443b2"
+source = "git+https://github.com/utopiabound/libmat?branch=rref#fb8cb5aac245a3256d778e5784555824733d2c8d"
 dependencies = [
  "num-traits",
 ]
