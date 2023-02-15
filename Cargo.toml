@@ -7,7 +7,7 @@ keywords = [ "fltk", "rpn", "calculator" ]
 categories = [ "gui", "mathematics" ]
 
 [dependencies]
-clipboard = "0.5"
+copypasta = "0.8"
 env_logger = "0.9"
 # Use this line to just build with fltk statically
 #fltk = "^1.3"

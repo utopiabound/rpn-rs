@@ -13,7 +13,7 @@ use crate::{
     stack::{Return, StackOps},
 };
 
-use clipboard::{ClipboardContext, ClipboardProvider};
+use copypasta::{ClipboardContext, ClipboardProvider};
 use fltk::{
     app, dialog,
     enums::{CallbackTrigger, Shortcut},
@@ -68,6 +68,7 @@ fn main() {
         .with_size(width, win_h);
 
     let pack = Pack::default().with_size(width, win_h);
+    let mut clipboard = ClipboardContext::new().unwrap();
 
     let mut menu = SysMenuBar::default().with_size(width, in_h);
     menu.add_emit(
@@ -339,17 +340,18 @@ fn main() {
             Message::About => dialog::message_default(
                 format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
             ),
-            Message::Copy => table.get_selection(),
-            Message::Paste => {
-                let clip: Result<ClipboardContext, _> = ClipboardProvider::new();
-                if let Ok(mut clip) = clip {
-                    let v = clip.get_contents();
-                    log::debug!("Clipboard Contents: {v:?}");
-                    if let Ok(v) = v {
-                        input.set_value(&v);
-                    }
+            Message::Copy => {
+                if let Err(e) = table
+                    .get_selection()
+                    .map(|txt| clipboard.set_contents(txt).map_err(|e| e.to_string()))
+                {
+                    error.set_value(&e);
                 }
             }
+            Message::Paste => match clipboard.get_contents() {
+                Ok(txt) => input.set_value(&txt),
+                Err(e) => error.set_value(&e.to_string()),
+            },
             Message::Help => help.show(),
             Message::Quit => app::quit(),
         }

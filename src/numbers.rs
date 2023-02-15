@@ -393,7 +393,9 @@ impl Value {
 
     pub fn try_factorial(self) -> Result<Value, String> {
         match self {
-            Value::Scaler(Scaler::Int(x)) if x.denom().to_u32() == Some(1) && x.clone().signum() >= 0 => {
+            Value::Scaler(Scaler::Int(x))
+                if x.denom().to_u32() == Some(1) && x.clone().signum() >= 0 =>
+            {
                 let max = x.numer();
                 let mut n = Integer::from(1);
                 let mut i = Integer::from(2);
@@ -403,7 +405,7 @@ impl Value {
                 }
                 Ok(n.into())
             }
-            _ => Err(format!("{self:?}! is not INT!"))
+            _ => Err(format!("{self:?}! is not INT!")),
         }
     }
 

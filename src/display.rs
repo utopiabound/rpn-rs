@@ -1,7 +1,6 @@
 // Basically a table where the cell contents can be modified
 
 use crate::numbers::{Radix, Value};
-use clipboard::ClipboardProvider;
 use fltk::{
     draw, enums,
     prelude::{GroupExt, TableExt, WidgetBase, WidgetExt},
@@ -145,31 +144,24 @@ impl StackOutput {
         draw::pop_clip();
     }
 
-    pub fn get_selection(&self) {
+    pub fn get_selection(&self) -> Result<String, String> {
         let (x1, _, _, _) = self.table.get_selection();
         if x1 < 0 {
-            log::debug!("No Selection");
-            return;
+            return Err("No Selection".to_string());
         }
         let total_rows = self.table.rows();
         let len = self.data.borrow().len() as i32;
         let rn = len + x1 - total_rows;
         if rn < 0 {
             log::debug!("Selection is Empty");
-            return;
+            return Ok("".to_string());
         }
 
-        let clip: Result<clipboard::ClipboardContext, _> = ClipboardProvider::new();
-
-        if let Ok(mut clip) = clip {
-            if let Some(v) = self.data.borrow().get(rn as usize) {
-                let s = v.to_string_radix(*self.radix.borrow(), *self.rational.borrow(), true);
-                log::debug!("Selection: {s}");
-                if let Err(e) = clip.set_contents(s) {
-                    log::error!("Failed clipboard set: {e:?}");
-                }
-            }
-        }
+        self.data
+            .borrow()
+            .get(rn as usize)
+            .map(|v| v.to_string_radix(*self.radix.borrow(), *self.rational.borrow(), true))
+            .ok_or_else(|| "No Selection".to_string())
     }
 
     // The selected flag sets the color of the cell to a grayish color, otherwise white
