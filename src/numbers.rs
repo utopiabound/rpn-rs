@@ -912,31 +912,36 @@ impl Pow<Scaler> for Scaler {
     fn pow(self, other: Self) -> Self::Output {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => {
-                let fa: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                if b == (1, 2) {
+                let fa = a.clone() * Complex::with_val(FLOAT_PRECISION, (1, 0));
+                if b.is_integer() {
+                    if let Some(b) = b.numer().to_u32() {
+                        Scaler::from(a.pow(b))
+                    } else {
+                        let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
+                        Scaler::from(fa.pow(fb))
+                    }
+                } else if b == (1, 2) {
                     Scaler::from(fa.sqrt())
-                } else if b == (1, 3) {
-                    Scaler::from(fa.cbrt())
                 } else {
-                    let fb: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
+                    let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
                     Scaler::from(fa.pow(fb))
                 }
             }
             (Scaler::Int(a), Scaler::Float(b)) => {
-                let fa: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                let fb: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
+                let fa = a * Complex::with_val(FLOAT_PRECISION, (1, 0));
+                let fb = Complex::from(b);
                 Scaler::from(fa.pow(fb))
             }
             (Scaler::Int(a), Scaler::Complex(b)) => {
-                let f: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(Complex::from(f).pow(b))
+                let f = a * Complex::with_val(FLOAT_PRECISION, (1, 0));
+                Scaler::from(f.pow(b))
             }
 
             (Scaler::Float(a), Scaler::Int(b)) => {
-                let f: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(a.pow(f))
+                let f = b * Float::with_val(FLOAT_PRECISION, 1.0);
+                Scaler::from(Complex::from(a).pow(f))
             }
-            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a.pow(b)),
+            (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(Complex::from(a).pow(b)),
             (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(Complex::from(a).pow(b)),
 
             (Scaler::Complex(a), Scaler::Int(b)) => {
