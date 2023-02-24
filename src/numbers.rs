@@ -280,8 +280,8 @@ impl Scaler {
                     if radix == Radix::Decimal {
                         x.to_f64().to_string()
                     } else {
-                        // @@
-                        let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
+                        // @@ this is kind of ugly
+                        let f: Float = x * Float::with_val(32, 1.0);
                         f.to_string_radix(radix.into(), None)
                     }
                 } else {

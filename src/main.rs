@@ -32,6 +32,7 @@ use std::collections::VecDeque;
 enum Message {
     About,
     Clear,
+    Debug,
     Drop,
     Copy,
     Paste,
@@ -147,6 +148,13 @@ fn main() {
         MenuFlag::Normal,
         s,
         Message::About,
+    );
+    menu.add_emit(
+        "Help/Debug\t",
+        Shortcut::None,
+        MenuFlag::Normal,
+        s,
+        Message::Debug,
     );
     menu.add_emit(
         "Help/Help\t",
@@ -340,6 +348,11 @@ fn main() {
             Message::About => dialog::message_default(
                 format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
             ),
+            Message::Debug => {
+                if let Some(v) = stacks[0].last() {
+                    dialog::message_default(format!("[1]: {v:?}").as_str());
+                }
+            }
             Message::Copy => {
                 if let Err(e) = table
                     .get_selection()
