@@ -61,8 +61,9 @@ impl RpnMatrixExt for Matrix<Scaler> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
 pub enum Radix {
+    #[default]
     Decimal,
     Hex,
     Binary,

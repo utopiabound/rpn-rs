@@ -7,7 +7,25 @@ use crate::numbers::{Radix, Value};
 
 // possibly optional
 pub mod fltk;
-// pub mod cli;
+pub mod readline;
+
+#[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum::Display)]
+#[clap(rename_all = "lower")]
+#[strum(serialize_all = "lowercase")]
+pub enum Flavor {
+    /// Graphical User Interface
+    #[default]
+    Gui,
+    /// Text User Interface
+    Tui,
+}
+
+pub fn get_ui(flavor: Flavor) -> Box<dyn CalcDisplay> {
+    match flavor {
+        Flavor::Gui => Box::new(fltk::FltkCalcDisplay::init()),
+        Flavor::Tui => Box::new(readline::ReadlineCalcUI::init()),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -18,7 +36,9 @@ pub enum Message {
 
 pub trait CalcDisplay {
     /// Initialize Display driver
-    fn init() -> Self where Self: Sized;
+    fn init() -> Self
+    where
+        Self: Sized;
 
     /// Wait on next Message for event loop
     fn next(&mut self) -> Option<Message>;

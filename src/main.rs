@@ -8,21 +8,31 @@ mod stack;
 mod ui;
 
 use crate::{
-    numbers::Value,
+    numbers::{Radix, Value},
     stack::{Return, StackOps},
-    ui::{CalcDisplay, Message},
+    ui::Message,
 };
-
+use clap::Parser;
 use num_traits::Inv;
 use rug::ops::Pow;
 use std::collections::VecDeque;
+
+#[derive(Parser, Debug)]
+/// RPN Calculator
+struct App {
+    #[clap(short = 't', long = "type", default_value_t)]
+    /// Type of UI to display
+    flavor: ui::Flavor,
+}
 
 fn main() {
     let stack_undo = 10;
 
     env_logger::init();
 
-    let mut ui = ui::fltk::FltkCalcDisplay::init();
+    let cmd = App::parse();
+
+    let mut ui = ui::get_ui(cmd.flavor);
 
     let mut stacks: VecDeque<Vec<Value>> = VecDeque::with_capacity(stack_undo);
     stacks.push_front(vec![]);
@@ -38,7 +48,7 @@ fn main() {
                 let rv = match value.as_str() {
                     "q" | "quit" => {
                         ui.quit();
-                        Return::Noop
+                        break;
                     }
                     // Stack Operations
                     "undo" | "u" => {
@@ -78,9 +88,29 @@ fn main() {
                             Return::Ok
                         }
                     }
-                    // #bin #oct #dec #hex @@
                     "sw" | "swap" => stacks[0].binary_v(|a, b| vec![b, a]),
                     "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
+                    // Display Operations
+                    "#bin" => {
+                        ui.set_display(Some(Radix::Binary), None);
+                        need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#oct" => {
+                        ui.set_display(Some(Radix::Octal), None);
+                        need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#dec" => {
+                        ui.set_display(Some(Radix::Decimal), None);
+                        need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#hex" => {
+                        ui.set_display(Some(Radix::Hex), None);
+                        need_redisplay = true;
+                        Return::Noop
+                    }
                     // Arithmatic Operations
                     "+" => stacks[0].try_binary(|a, b| a + b),
                     "*" => stacks[0].try_binary(|a, b| a * b),
