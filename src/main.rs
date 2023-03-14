@@ -1,212 +1,43 @@
-/* RPN-rs (c) 2021 Nathaniel Clark
+/* RPN-rs (c) 2023 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
-mod display;
 mod numbers;
 mod stack;
+mod ui;
 
 use crate::{
-    display::StackOutput,
-    numbers::{Radix, Value},
+    numbers::Value,
     stack::{Return, StackOps},
+    ui::{CalcDisplay, Message},
 };
 
-use copypasta::{ClipboardContext, ClipboardProvider};
-use fltk::{
-    app, dialog,
-    enums::{CallbackTrigger, Shortcut},
-    group::Pack,
-    input::Input,
-    menu::{MenuFlag, SysMenuBar},
-    output::Output,
-    prelude::{GroupExt, InputExt, MenuExt, WidgetExt},
-    window::Window,
-};
 use num_traits::Inv;
 use rug::ops::Pow;
 use std::collections::VecDeque;
-
-#[derive(Debug, Copy, Clone)]
-enum Message {
-    About,
-    Clear,
-    Debug,
-    Drop,
-    Copy,
-    Paste,
-    Help,
-    Input,
-    Radix(Radix),
-    Rational,
-    Quit,
-}
 
 fn main() {
     let stack_undo = 10;
 
     env_logger::init();
 
-    let app = app::App::default().with_scheme(app::Scheme::Gtk);
-    app::set_visible_focus(false);
-    //app::background(0x42, 0x42, 0x42);
-    //app::background2(0x1b, 0x1b, 0x1b);
-
-    let (s, r) = app::channel::<Message>();
+    let mut ui = ui::fltk::FltkCalcDisplay::init();
 
     let mut stacks: VecDeque<Vec<Value>> = VecDeque::with_capacity(stack_undo);
     stacks.push_front(vec![]);
 
-    let width = 400;
-    let out_h = 480;
-    let in_h = 20;
-    let err_h = 20;
-    let win_h = out_h + in_h + in_h + err_h;
+    while let Some(msg) = ui.next() {
+        ui.set_error(None);
 
-    let mut wind = Window::default()
-        .with_label("rpn-rs")
-        .with_size(width, win_h);
-
-    let pack = Pack::default().with_size(width, win_h);
-    let mut clipboard = ClipboardContext::new().unwrap();
-
-    let mut menu = SysMenuBar::default().with_size(width, in_h);
-    menu.add_emit(
-        "File/Clear\t",
-        Shortcut::None,
-        MenuFlag::Normal,
-        s,
-        Message::Clear,
-    );
-    menu.add_emit(
-        "File/Pop Stack\t",
-        Shortcut::Ctrl | 'p',
-        MenuFlag::Normal,
-        s,
-        Message::Drop,
-    );
-    menu.add_emit(
-        "File/Copy\t",
-        Shortcut::Ctrl | 'c',
-        MenuFlag::Normal,
-        s,
-        Message::Copy,
-    );
-    menu.add_emit(
-        "File/Paste\t",
-        Shortcut::Ctrl | 'v',
-        MenuFlag::Normal,
-        s,
-        Message::Paste,
-    );
-    menu.add_emit(
-        "File/Quit\t",
-        Shortcut::Ctrl | 'q',
-        MenuFlag::Normal,
-        s,
-        Message::Quit,
-    );
-    menu.add_emit(
-        "Radix/Decimal\t",
-        Shortcut::Ctrl | 'd',
-        MenuFlag::Radio,
-        s,
-        Message::Radix(Radix::Decimal),
-    );
-    menu.add_emit(
-        "Radix/Hexadecimal\t",
-        Shortcut::Ctrl | 'x',
-        MenuFlag::Radio,
-        s,
-        Message::Radix(Radix::Hex),
-    );
-    menu.add_emit(
-        "Radix/Octal\t",
-        Shortcut::Ctrl | 'o',
-        MenuFlag::Radio,
-        s,
-        Message::Radix(Radix::Octal),
-    );
-    menu.add_emit(
-        "Radix/Binary\t",
-        Shortcut::Ctrl | 'b',
-        MenuFlag::Radio,
-        s,
-        Message::Radix(Radix::Binary),
-    );
-    menu.add_emit(
-        "Options/Rational\t",
-        Shortcut::Ctrl | 'r',
-        MenuFlag::Toggle,
-        s,
-        Message::Rational,
-    );
-    menu.add_emit(
-        "Help/About\t",
-        Shortcut::None,
-        MenuFlag::Normal,
-        s,
-        Message::About,
-    );
-    menu.add_emit(
-        "Help/Debug\t",
-        Shortcut::None,
-        MenuFlag::Normal,
-        s,
-        Message::Debug,
-    );
-    menu.add_emit(
-        "Help/Help\t",
-        Shortcut::None,
-        MenuFlag::Normal,
-        s,
-        Message::Help,
-    );
-    menu.find_item("Radix/Decimal\t")
-        .expect("Failed to find Decimal Radix")
-        .set();
-    menu.find_item("Options/Rational\t")
-        .expect("Failed to find Rational Option")
-        .set();
-
-    let mut error = Output::default().with_size(width, err_h);
-
-    let mut table = StackOutput::new(width, out_h);
-
-    let mut input = Input::default().with_size(width, in_h);
-    pack.resizable(table.table());
-
-    pack.end();
-
-    app::set_focus(&input);
-    wind.make_resizable(true);
-    wind.resizable(&pack);
-    wind.end();
-    wind.show();
-
-    input.set_trigger(CallbackTrigger::EnterKeyAlways);
-    input.emit(s, Message::Input);
-
-    let mut help = dialog::HelpDialog::default();
-    help.set_value(include_str!("fixtures/help.html"));
-    help.hide();
-
-    while app.wait() {
-        let Some(val) = r.recv() else {
-            continue
-        };
-        error.set_value("");
         let mut need_redisplay = false;
-        match val {
-            Message::Input => {
+        match msg {
+            Message::Input(value) => {
                 stacks.push_front(stacks[0].clone());
-                let value = input.value();
-                input.set_value("");
 
                 let rv = match value.as_str() {
                     "q" | "quit" => {
-                        app::quit();
+                        ui.quit();
                         Return::Noop
                     }
                     // Stack Operations
@@ -247,6 +78,7 @@ fn main() {
                             Return::Ok
                         }
                     }
+                    // #bin #oct #dec #hex @@
                     "sw" | "swap" => stacks[0].binary_v(|a, b| vec![b, a]),
                     "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
                     // Arithmatic Operations
@@ -301,8 +133,7 @@ fn main() {
                             Ok(v) => {
                                 stacks[0].push(v);
                                 if let Some(op) = op {
-                                    input.set_value(op);
-                                    s.send(Message::Input);
+                                    ui.push_input(op.to_string());
                                 }
                                 Return::Ok
                             }
@@ -324,53 +155,19 @@ fn main() {
                     }
                     Return::Err(e) => {
                         stacks.pop_front();
-                        error.set_value(&e);
+                        ui.set_error(Some(e));
                     }
                 }
             }
             Message::Drop => need_redisplay = stacks[0].pop().is_some(),
-            Message::Radix(r) => {
-                table.set_radix(r);
-                need_redisplay = true;
-            }
-            Message::Rational => {
-                let item = menu
-                    .find_item("Options/Rational\t")
-                    .expect("Failed to find Rational Option");
-                table.set_rational(item.value());
-                need_redisplay = true;
-            }
             Message::Clear => {
                 stacks.clear();
                 stacks.push_front(vec![]);
                 need_redisplay = true;
             }
-            Message::About => dialog::message_default(
-                format!("RPN Calculator {} (c) 2022", env!("CARGO_PKG_VERSION")).as_str(),
-            ),
-            Message::Debug => {
-                if let Some(v) = stacks[0].last() {
-                    dialog::message_default(format!("[1]: {v:?}").as_str());
-                }
-            }
-            Message::Copy => {
-                if let Err(e) = table
-                    .get_selection()
-                    .map(|txt| clipboard.set_contents(txt).map_err(|e| e.to_string()))
-                {
-                    error.set_value(&e);
-                }
-            }
-            Message::Paste => match clipboard.get_contents() {
-                Ok(txt) => input.set_value(&txt),
-                Err(e) => error.set_value(&e.to_string()),
-            },
-            Message::Help => help.show(),
-            Message::Quit => app::quit(),
         }
         if need_redisplay {
-            table.set_data(&stacks[0]);
-            table.redraw();
+            ui.set_data(&stacks[0]);
         }
     }
 }

@@ -1,4 +1,4 @@
-/* RPN-rs (c) 2021 Nathaniel Clark
+/* RPN-rs (c) 2023 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
@@ -266,10 +266,9 @@ impl Scaler {
     }
 
     fn get_usize(self) -> Option<usize> {
-        if let Scaler::Int(x) = self {
-            is_integer(&x).then(|| x.numer().to_usize()).flatten()
-        } else {
-            None
+        match self {
+            Scaler::Int(x) => is_integer(&x).then(|| x.numer().to_usize()).flatten(),
+            _ => None,
         }
     }
 
