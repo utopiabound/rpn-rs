@@ -10,7 +10,7 @@ mod ui;
 use crate::{
     numbers::{Radix, Value},
     stack::{Return, StackOps},
-    ui::Message,
+    ui::{Flavor, Message},
 };
 use clap::Parser;
 use num_traits::Inv;
@@ -20,9 +20,14 @@ use std::collections::VecDeque;
 #[derive(Parser, Debug)]
 /// RPN Calculator
 struct App {
-    #[clap(short = 't', long = "type", default_value_t)]
+    #[clap(short, long, default_value_t)]
     /// Type of UI to display
-    flavor: ui::Flavor,
+    flavor: Flavor,
+}
+
+fn handle_err(flavor: Flavor, e: impl std::fmt::Display) -> ! {
+    eprintln!("Could not start rpn-rs in {flavor} mode: {e}");
+    std::process::exit(1);
 }
 
 fn main() {
@@ -32,7 +37,19 @@ fn main() {
 
     let cmd = App::parse();
 
-    let mut ui = ui::get_ui(cmd.flavor);
+    let mut ui = match ui::get_ui(cmd.flavor) {
+        Ok(x) => x,
+        Err(e) => {
+            if cmd.flavor == Flavor::Gui {
+                let Ok(ui) = ui::get_ui(Flavor::Cli) else {
+                    handle_err(Flavor::Cli, e);
+                };
+                ui
+            } else {
+                handle_err(cmd.flavor, e);
+            }
+        }
+    };
 
     let mut stacks: VecDeque<Vec<Value>> = VecDeque::with_capacity(stack_undo);
     stacks.push_front(vec![]);

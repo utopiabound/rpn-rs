@@ -18,21 +18,22 @@ pub struct ReadlineCalcUI {
     stack: Vec<String>,
     error: Option<String>,
 }
+use std::error::Error;
 
 const PROMPT: &str = ">> ";
 
 impl CalcDisplay for ReadlineCalcUI {
-    fn init() -> Self {
-        let editor = DefaultEditor::new().unwrap();
+    fn init() -> Result<Self, Box<dyn Error + Send + Sync>> {
+        let editor = DefaultEditor::new()?;
 
-        Self {
+        Ok(Self {
             radix: Radix::default(),
             rational: true,
             input: None,
             error: None,
             stack: vec![],
             editor,
-        }
+        })
     }
 
     /// Wait on next Message for event loop

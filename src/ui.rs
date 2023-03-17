@@ -4,12 +4,13 @@
  */
 
 use crate::numbers::{Radix, Value};
+use std::error::Error;
 
 // possibly optional
 pub mod fltk;
 pub mod readline;
 
-#[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum::Display)]
+#[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum::Display, PartialEq)]
 #[clap(rename_all = "lower")]
 #[strum(serialize_all = "lowercase")]
 pub enum Flavor {
@@ -17,13 +18,13 @@ pub enum Flavor {
     #[default]
     Gui,
     /// Text User Interface
-    Tui,
+    Cli,
 }
 
-pub fn get_ui(flavor: Flavor) -> Box<dyn CalcDisplay> {
+pub fn get_ui(flavor: Flavor) -> Result<Box<dyn CalcDisplay>, Box<dyn Error + Send + Sync>> {
     match flavor {
-        Flavor::Gui => Box::new(fltk::FltkCalcDisplay::init()),
-        Flavor::Tui => Box::new(readline::ReadlineCalcUI::init()),
+        Flavor::Gui => Ok(Box::new(fltk::FltkCalcDisplay::init()?)),
+        Flavor::Cli => Ok(Box::new(readline::ReadlineCalcUI::init()?)),
     }
 }
 
@@ -36,7 +37,7 @@ pub enum Message {
 
 pub trait CalcDisplay {
     /// Initialize Display driver
-    fn init() -> Self
+    fn init() -> Result<Self, Box<dyn Error + Send + Sync>>
     where
         Self: Sized;
 

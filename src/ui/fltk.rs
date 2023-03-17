@@ -20,8 +20,7 @@ use fltk::{
     table,
     window::Window,
 };
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, error::Error, rc::Rc};
 
 #[derive(Debug, Copy, Clone)]
 enum FltkMessage {
@@ -50,7 +49,7 @@ pub struct FltkCalcDisplay {
 }
 
 impl CalcDisplay for FltkCalcDisplay {
-    fn init() -> Self {
+    fn init() -> Result<Self, Box<dyn Error + Send + Sync>> {
         let app = app::App::default().with_scheme(app::Scheme::Gtk);
         app::set_visible_focus(false);
         //app::background(0x42, 0x42, 0x42);
@@ -68,7 +67,7 @@ impl CalcDisplay for FltkCalcDisplay {
             .with_size(width, win_h);
 
         let pack = Pack::default().with_size(width, win_h);
-        let clipboard = ClipboardContext::new().unwrap();
+        let clipboard = ClipboardContext::new()?;
 
         let mut menu = SysMenuBar::default().with_size(width, in_h);
         menu.add_emit(
@@ -184,7 +183,7 @@ impl CalcDisplay for FltkCalcDisplay {
         help.set_value(include_str!("../fixtures/help.html"));
         help.hide();
 
-        Self {
+        Ok(Self {
             table,
             app,
             input,
@@ -194,7 +193,7 @@ impl CalcDisplay for FltkCalcDisplay {
             tx,
             menu,
             clipboard: Box::new(clipboard),
-        }
+        })
     }
 
     fn next(&mut self) -> Option<Message> {
