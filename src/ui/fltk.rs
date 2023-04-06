@@ -277,7 +277,7 @@ impl CalcDisplay for FltkCalcDisplay {
     }
 
     /// Call back for Message::Quit
-    fn quit(&self) {
+    fn quit(&mut self) {
         self.app.quit();
     }
 }

@@ -9,6 +9,7 @@ use std::error::Error;
 // possibly optional
 pub mod fltk;
 pub mod readline;
+pub mod tui;
 
 #[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum::Display, PartialEq)]
 #[clap(rename_all = "lower")]
@@ -17,14 +18,17 @@ pub enum Flavor {
     /// Graphical User Interface
     #[default]
     Gui,
-    /// Text User Interface
+    /// Simple Text User Interface
     Cli,
+    /// Fancy Text User Interface
+    Tui,
 }
 
 pub fn get_ui(flavor: Flavor) -> Result<Box<dyn CalcDisplay>, Box<dyn Error + Send + Sync>> {
     match flavor {
         Flavor::Gui => Ok(Box::new(fltk::FltkCalcDisplay::init()?)),
         Flavor::Cli => Ok(Box::new(readline::ReadlineCalcUI::init()?)),
+        Flavor::Tui => Ok(Box::new(tui::TuiCalcUI::init()?)),
     }
 }
 
@@ -61,5 +65,5 @@ pub trait CalcDisplay {
     fn help(&mut self);
 
     /// Cleanup and quit
-    fn quit(&self);
+    fn quit(&mut self);
 }

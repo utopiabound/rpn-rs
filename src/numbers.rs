@@ -583,7 +583,7 @@ impl ops::Add<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a + b).map(Value::Matrix).map_err(|e| e.to_string())
             }
-            _ => Err("Illegal Operation: Scaler & Matrix Addition".to_string()),
+            _ => Err("Illegal Operation: Scaler and Matrix Addition".to_string()),
         }
     }
 }
@@ -714,7 +714,7 @@ impl ops::Sub<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a - b).map(Value::Matrix).map_err(|e| e.to_string())
             }
-            _ => Err("Illegal Operation: Matrix & Scaler Subtraction".to_string()),
+            _ => Err("Illegal Operation: Matrix and Scaler Subtraction".to_string()),
         }
     }
 }

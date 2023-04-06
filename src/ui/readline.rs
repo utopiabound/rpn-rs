@@ -113,5 +113,5 @@ impl CalcDisplay for ReadlineCalcUI {
     }
 
     /// Cleanup and quit
-    fn quit(&self) {}
+    fn quit(&mut self) {}
 }
