@@ -218,3 +218,14 @@ fn main() {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn verify_cli() {
+        use super::App;
+        use clap::CommandFactory as _;
+
+        App::command().debug_assert()
+    }
+}
