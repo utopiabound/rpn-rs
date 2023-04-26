@@ -67,6 +67,10 @@ fn main() {
                         ui.quit();
                         break;
                     }
+                    "help" | "?" => {
+                        ui.help();
+                        Return::Noop
+                    }
                     // Stack Operations
                     "undo" | "u" => {
                         if stacks.len() > 2 {
@@ -125,6 +129,16 @@ fn main() {
                     }
                     "#hex" => {
                         ui.set_display(Some(Radix::Hex), None);
+                        need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#real" => {
+                        ui.set_display(None, Some(false));
+                        need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#rational" | "#rat" => {
+                        ui.set_display(None, Some(true));
                         need_redisplay = true;
                         Return::Noop
                     }

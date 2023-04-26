@@ -16,14 +16,14 @@ use crossterm::{
 use std::{error::Error, io::Stdout};
 use tui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Span,
     widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
     Frame, Terminal,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct CalcInfo {
     retry: Option<String>,
     stack: Vec<String>,
@@ -31,12 +31,41 @@ struct CalcInfo {
     input: String,
     radix: Radix,
     rational: bool,
+    help_popup: bool,
     state: TableState,
 }
 
 pub struct TuiCalcUI {
     info: CalcInfo,
     terminal: Terminal<CrosstermBackend<Stdout>>,
+}
+
+/// helper function to create a centered rect using up certain percentage of the available rect `r`
+// From tui-rs/examples/popup.rs
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Percentage(percent_y),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(
+            [
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ]
+            .as_ref(),
+        )
+        .split(popup_layout[1])[1]
 }
 
 fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
@@ -76,7 +105,14 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
     f.render_stateful_widget(t, chunks[0], &mut info.state);
     let input = Paragraph::new(info.input.as_ref());
     f.render_widget(input, chunks[1]);
-    f.set_cursor(chunks[1].x + info.input.len() as u16, chunks[1].y);
+
+    if info.help_popup {
+        let block = Block::default().title("Help").borders(Borders::ALL);
+        let area = centered_rect(80, 80, f.size());
+        f.render_widget(block, area);
+    } else {
+        f.set_cursor(chunks[1].x + info.input.len() as u16, chunks[1].y);
+    }
 }
 
 impl CalcDisplay for TuiCalcUI {
@@ -91,13 +127,8 @@ impl CalcDisplay for TuiCalcUI {
 
         Ok(Self {
             info: CalcInfo {
-                radix: Radix::default(),
                 rational: true,
-                input: "".to_string(),
-                retry: None,
-                error: None,
-                stack: vec![],
-                state: TableState::default(),
+                ..Default::default()
             },
             terminal,
         })
@@ -128,19 +159,26 @@ impl CalcDisplay for TuiCalcUI {
                     eprintln!("Error: {e}");
                     break;
                 }
-                Ok(Event::Key(k)) => match k.code {
-                    KeyCode::Char(c) if k.modifiers.is_empty() => self.info.input.push(c),
-                    KeyCode::Enter => {
-                        let line = self.info.input.clone();
-                        self.info.input = "".to_string();
-                        return Some(Message::Input(line));
+                Ok(Event::Key(k)) => {
+                    if self.info.help_popup {
+                        // @@
+                        self.info.help_popup = false;
+                    } else {
+                        match k.code {
+                            KeyCode::Char(c) if k.modifiers.is_empty() => self.info.input.push(c),
+                            KeyCode::Enter => {
+                                let line = self.info.input.clone();
+                                self.info.input = "".to_string();
+                                return Some(Message::Input(line));
+                            }
+                            KeyCode::Backspace => {
+                                let _ = self.info.input.pop();
+                            }
+                            // TODO: Add line editing
+                            _ => {}
+                        }
                     }
-                    KeyCode::Backspace => {
-                        let _ = self.info.input.pop();
-                    }
-                    // TODO: Add line editing
-                    _ => {}
-                },
+                }
                 Ok(Event::Paste(val)) => self.info.input.push_str(&val),
                 Ok(Event::Resize(_, _)) => {}
                 Ok(e) => self.set_error(Some(format!("Unknown: {e:?}"))),
@@ -185,6 +223,6 @@ impl CalcDisplay for TuiCalcUI {
 
     /// Show Help Text
     fn help(&mut self) {
-        println!("@@");
+        self.info.help_popup = true;
     }
 }

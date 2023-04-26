@@ -209,7 +209,10 @@ impl CalcDisplay for FltkCalcDisplay {
                 }
                 FltkMessage::Clear => return Some(Message::Clear),
                 FltkMessage::Drop => return Some(Message::Drop),
-                FltkMessage::Radix(rdx) => self.table.set_radix(rdx),
+                FltkMessage::Radix(rdx) => {
+                    self.table.set_radix(rdx);
+                    self.table.redraw();
+                }
                 FltkMessage::Rational => {
                     let item = self
                         .menu
