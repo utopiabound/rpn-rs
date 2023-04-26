@@ -466,6 +466,13 @@ impl Value {
         }
     }
 
+    pub fn try_abs(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(Value::Scaler(x.abs())),
+            Value::Matrix(_) => Err("NYI".to_string()),
+        }
+    }
+
     pub fn try_log10(self) -> Result<Self, String> {
         match self {
             Value::Scaler(x) => Ok(Value::Scaler(x.log10())),
