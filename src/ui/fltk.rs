@@ -2,7 +2,9 @@
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
-// Basically a table where the cell contents can be modified
+/*
+ * A table where the cell contents can be modified
+ */
 
 use crate::{
     numbers::{Radix, Value},

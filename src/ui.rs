@@ -6,7 +6,6 @@
 use crate::numbers::{Radix, Value};
 use std::error::Error;
 
-// possibly optional
 pub mod fltk;
 pub mod readline;
 pub mod tui;
