@@ -1,5 +1,6 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<!-- HTML 2.0 https://www.w3.org/MarkUp/1995-archive/html-spec.html + Tables -->
 <html>
-  <!-- HTML 2.0 https://www.w3.org/MarkUp/1995-archive/html-spec.html -->
   <head>
     <title>RPN-rs Graphical Reverse Polish Notation Caluclator</title>
   </head>
@@ -21,36 +22,36 @@
       (+) button:</p>
 
     <p>Complex numbers can be entered in any of the following forms:</p>
-<pre>
+    <pre>
   (2 4)
   (2, 4)
   2+4i
 </pre>
     <p>Matrix can be entered as follows:</p>
-<pre>
+    <pre>
   [ 1 2 3; 4 5 6; 7 8 9 ]
   [ 1.1 2.2; 3+2i 4 ]
 </pre>
 
     <table>
       <tr><th align="left">Command</th><th align="left">Stack Consumed</th><th align="left">Description</th><th>Representation</th></tr>
-      <tr><td>quit | quit | q</td><td><i>N/A</i></td><td colspan=2>Quite application</td></tr>
-      <tr><td>help | ?</td><td><i>N/A</i></td><td colspan=2>Display This Help</td></tr>
+      <tr><td>quit | exit | q</td><td><i>N/A</i></td><td colspan=2>Quite application</td></tr>
+      <tr><td>help | ?</td><td><i>N/A</i></td><td colspan=2>Display Tdis Help</td></tr>
       <tr><td>#bin</td><td><i>N/A</i></td><td colspan=2>Set display to Binary</td></tr>
       <tr><td>#oct</td><td><i>N/A</i></td><td colspan=2>Set display to Octal</td></tr>
       <tr><td>#dec</td><td><i>N/A</i></td><td colspan=2>Set display to Decimal</td></tr>
       <tr><td>#hex</td><td><i>N/A</i></td><td colspan=2>Set display to Hexadecimal</td></tr>
-      <tr><td>#real</td><td><i>N/A</i></td><td colspan=2>Set display to Real</td></tr>
-      <tr><td>#rational | #rat</td><td><i>N/A</i></td><td colspan=2>Set display to Rational</td></tr>
+      <tr><td>#R | #real</td><td><i>N/A</i></td><td colspan=2>Set display to Real</td></tr>
+      <tr><td>#Q | #rat(ional)</td><td><i>N/A</i></td><td colspan=2>Set display to Rational</td></tr>
       <tr><th colspan=4>Stack Operations</th></tr>
       <tr><td>clear</td><td><i>all</i></td><td colspan=2>clear stack and history</td></tr>
       <tr><td>drop | pop | del</td><td>1</td><td colspan=2>Remove first item on stack</td></tr>
-      <tr><td>dup |<i>enter</i><td>0</td></td><td colspan=2>Duplicate first item on stack</td></tr>
+      <tr><td>dup | <i>[enter]</i><td>0</td><td colspan=2>Duplicate first item on stack</td></tr>
       <tr><td>rollu(p) | ru(p) | roll</td><td>0</td><td colspan=2>Pop 1 item, and move it to end of stack</td></tr>
       <tr><td>rolld(own) | rd(own)</td><td>0</td><td colspan=2>Opposite of rollup</td></tr>
       <tr><td>swap | sw</td><td>0</td><td colspan=2>Swap first two items on stack</td></tr>
-      <tr><td>undo | u</td><td><i>N/A</i></td><td colspan=2>Undo last operation (other than clear)</td></tr>
-      <tr><th colspan=4>Arithmatic Operations</th></tr>
+      <tr><td>undo | u</td><td><i>N/A</i></td><td colspan=2>Undo last operation (otder tdan clear)</td></tr>
+      <tr><th colspan=4>Arithmetic Operations</th></tr>
       <tr><td colspan=4 align="center">results of operations are pushed to stack</td></tr>
       <tr><td>+</td><td>2</td><td>Add first two items</td><td><i>x+y</i></td></tr>
       <tr><td>-</td><td>2</td><td>Subtract first two items</td><td><i>x-y</i></td></tr>
@@ -58,22 +59,22 @@
       <tr><td>/</td><td>2</td><td>Divide first two items</td><td><i>x/y</i></td></tr>
       <tr><td>!</td><td>1</td><td>Factorial</td><td><i>x!</i></td></tr>
       <tr><td>inv</td><td>1</td><td>Inverse</td><td><i>1/x</i></td></tr>
-      <tr><td>mod</td><td>2</td><td>Modulo operator</td><td><i>x mod y<i></td></tr>
-      <tr><td>abs</td><td>1</td><td>Absolute value</td><td><i>|x|<i></td></tr>
+      <tr><td>mod</td><td>2</td><td>Modulo operator</td><td><i>x mod y</i></td></tr>
+      <tr><td>abs</td><td>1</td><td>Absolute value</td><td><i>|x|</i></td></tr>
       <tr><td>% | rem</td><td>2</td><td colspan=2>Remainder (euclidean)</td></tr>
       <tr><td>^ | pow</td><td>2</td><td>Exponent</td><td><i>x^y</i></td></tr>
-      <tr><td>root</td><td>2</td><td>Nth Root</td><td><i>x^(1/y)</i></td></tr>
+      <tr><td>root</td><td>2</td><td>Ntd Root</td><td><i>x^(1/y)</i></td></tr>
       <tr><td>sqr</td><td>1</td><td>Multiply item by itself</td><td><i>x&sup2;</i></td></tr>
       <tr><td>sqrt</td><td>1</td><td>Square root</td><td><i>./&macr;x</i></td></tr>
       <tr><td>trunc | truncate</td><td>1</td><td colspan=2>Truncate value to Integer</td></tr>
       <tr><th colspan=4>Scaler Operations</th></tr>
       <tr><td>factor</td><td>1</td><td colspan=2>Find all prime factors of item</td></tr>
       <tr><td>ln</td><td>1</td><td>Natural Log</td><td><i>ln(x)</i></td></tr>
-      <tr><td>log</td><td>1</td><td>Logarithm (base 10)</td><td><i>log10(x)</i></td></tr>
+      <tr><td>log</td><td>1</td><td>Logaritdm (base 10)</td><td><i>log10(x)</i></td></tr>
       <tr><th colspan=4>Binary Operations</th></tr>
       <tr><td>&lt;&lt; | lshift</td><td>2</td><td>Bitwise left shift</td><td><i>x&laquo;y</i></td></tr>
       <tr><td>&gt;&gt; | rshift</td><td>2</td><td>Bitwise right shift</td><td><i>x&raquo;y</i></td></tr>
-      <tr><th colspan=4>Matrix Operations</th></tr>
+      <tr><td colspan=4 align="center"><b>Matrix Operations</b></td></tr>
       <tr><td>det | determinant</td><td>1</td><td>Calculate Determinant</td><td><i>det(x)</i></td></tr>
       <tr><td>rref</td><td>1</td><td colspan=2>Reduce Row Echelon Form</td></tr>
       <tr><td>trans | transpose</td><td>1</td><td>Transpose</td><td><i>x^T</i></td></tr>
@@ -83,5 +84,7 @@
       <tr><td>pi</td><td>0</td><td colspan=2>Ratio of circle circumference to diameter</td></tr>
       <tr><td>ident | identity</td><td>1</td><td>Matrix Identity NxN</td><td><i>I</i></td></tr>
     </table>
+
+    <p>Command abreviations "ident(ity)" can be enter as either "ident" or "identity".</p>
   </body>
 </html>

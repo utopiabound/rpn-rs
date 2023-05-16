@@ -63,7 +63,7 @@ fn main() {
                 stacks.push_front(stacks[0].clone());
 
                 let rv = match value.as_str() {
-                    "q" | "quit" => {
+                    "quit" | "q" | "exit" => {
                         ui.quit();
                         break;
                     }
@@ -132,12 +132,12 @@ fn main() {
                         need_redisplay = true;
                         Return::Noop
                     }
-                    "#real" => {
+                    "#real" | "#R" => {
                         ui.set_display(None, Some(false));
                         need_redisplay = true;
                         Return::Noop
                     }
-                    "#rational" | "#rat" => {
+                    "#rational" | "#rat" | "#Q" => {
                         ui.set_display(None, Some(true));
                         need_redisplay = true;
                         Return::Noop
