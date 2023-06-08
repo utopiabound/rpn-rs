@@ -10,7 +10,7 @@ pub mod fltk;
 pub mod readline;
 pub mod tui;
 
-#[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum::Display, PartialEq)]
+#[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum_macros::Display, PartialEq)]
 #[clap(rename_all = "lower")]
 #[strum(serialize_all = "lowercase")]
 pub enum Flavor {

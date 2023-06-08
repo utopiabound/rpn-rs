@@ -15,7 +15,7 @@ log = "0.4"
 num-traits = "0.2"
 regex = "1"
 rug = "1"
-strum = { version = "0.24", features = ["derive"] }
+strum_macros = { version = "0.24" }
 
 # GUI
 # Use this line to just build with fltk statically
