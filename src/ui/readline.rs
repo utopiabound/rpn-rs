@@ -5,7 +5,7 @@
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{CalcDisplay, Message},
+    ui::{help_text, CalcDisplay, Message},
 };
 
 use rustyline::{error::ReadlineError, DefaultEditor};
@@ -109,7 +109,7 @@ impl CalcDisplay for ReadlineCalcUI {
 
     /// Show Help Text
     fn help(&mut self) {
-        println!("@@");
+        println!("{}", help_text(80));
     }
 
     /// Cleanup and quit

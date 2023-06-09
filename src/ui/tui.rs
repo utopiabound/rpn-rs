@@ -5,7 +5,7 @@
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{CalcDisplay, Message},
+    ui::{help_text, CalcDisplay, Message},
 };
 
 use crossterm::{
@@ -19,7 +19,7 @@ use tui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::Span,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, TableState},
+    widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
     Frame, Terminal,
 };
 
@@ -32,6 +32,12 @@ struct CalcInfo {
     radix: Radix,
     rational: bool,
     help_popup: bool,
+    // location of scroll in help text
+    help_scroll: u16,
+    // Maximum scroll value
+    help_max_scroll: u16,
+    // Height of help popup
+    help_height: u16,
     state: TableState,
 }
 
@@ -109,7 +115,14 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
     if info.help_popup {
         let block = Block::default().title("Help").borders(Borders::ALL);
         let area = centered_rect(80, 80, f.size());
+        let inner = block.inner(area);
+        let text = help_text(inner.width as usize);
+        info.help_height = inner.height;
+        info.help_max_scroll = text.lines().count().checked_sub(inner.height.into()).unwrap_or_default() as u16;
+        let p = Paragraph::new(text).scroll((info.help_scroll, 0));
+        f.render_widget(Clear, area);
         f.render_widget(block, area);
+        f.render_widget(p, inner);
     } else {
         f.set_cursor(chunks[1].x + info.input.len() as u16, chunks[1].y);
     }
@@ -161,8 +174,51 @@ impl CalcDisplay for TuiCalcUI {
                 }
                 Ok(Event::Key(k)) => {
                     if self.info.help_popup {
-                        // @@
-                        self.info.help_popup = false;
+                        // These match key bindings for less(1)
+                        match k.code {
+                            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                                self.info.help_popup = false
+                            }
+                            KeyCode::Home | KeyCode::Char('g') | KeyCode::Char('p') => self.info.help_scroll = 0,
+                            KeyCode::Down | KeyCode::Enter | KeyCode::Char('e') | KeyCode::Char('j') | KeyCode::Char('J') => {
+                                self.info.help_scroll = std::cmp::min(
+                                    self.info.help_scroll + 1,
+                                    self.info.help_max_scroll,
+                                )
+                            }
+                            KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('y') => {
+                                self.info.help_scroll =
+                                    self.info.help_scroll.checked_sub(1).unwrap_or_default()
+                            }
+                            KeyCode::Char('u') => {
+                                self.info.help_scroll = self
+                                    .info
+                                    .help_scroll
+                                    .checked_sub(self.info.help_height / 2)
+                                    .unwrap_or_default()
+                            }
+                            KeyCode::PageDown | KeyCode::Char(' ') | KeyCode::Char('f') |  KeyCode::Char('z') => {
+                                self.info.help_scroll = std::cmp::min(
+                                    self.info.help_scroll + self.info.help_height,
+                                    self.info.help_max_scroll,
+                                )
+                            }
+                            KeyCode::Char('d') => {
+                                self.info.help_scroll = std::cmp::min(
+                                    self.info.help_scroll + self.info.help_height / 2,
+                                    self.info.help_max_scroll,
+                                )
+                            }
+                            KeyCode::PageUp | KeyCode::Char('b') | KeyCode::Char('w') => {
+                                self.info.help_scroll = self
+                                    .info
+                                    .help_scroll
+                                    .checked_sub(self.info.help_height)
+                                    .unwrap_or_default()
+                            }
+                            KeyCode::End | KeyCode::Char('G') | KeyCode::Char('F') => self.info.help_scroll = self.info.help_max_scroll,
+                            _ => {}
+                        }
                     } else {
                         match k.code {
                             KeyCode::Char(c) if k.modifiers.is_empty() => self.info.input.push(c),
@@ -224,5 +280,6 @@ impl CalcDisplay for TuiCalcUI {
     /// Show Help Text
     fn help(&mut self) {
         self.info.help_popup = true;
+        self.info.help_scroll = 0;
     }
 }

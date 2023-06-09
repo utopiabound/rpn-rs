@@ -8,7 +8,7 @@
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{CalcDisplay, Message},
+    ui::{CalcDisplay, Message, HELP_HTML},
 };
 use copypasta::{ClipboardContext, ClipboardProvider};
 use fltk::{
@@ -182,7 +182,7 @@ impl CalcDisplay for FltkCalcDisplay {
         input.emit(tx, FltkMessage::Input);
 
         let mut help = dialog::HelpDialog::default();
-        help.set_value(include_str!("../fixtures/help.html"));
+        help.set_value(HELP_HTML);
         help.hide();
 
         Ok(Self {

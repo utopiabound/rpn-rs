@@ -10,6 +10,8 @@ pub mod fltk;
 pub mod readline;
 pub mod tui;
 
+pub(crate) const HELP_HTML: &str = include_str!("fixtures/help.html");
+
 #[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum_macros::Display, PartialEq)]
 #[clap(rename_all = "lower")]
 #[strum(serialize_all = "lowercase")]
@@ -65,4 +67,8 @@ pub trait CalcDisplay {
 
     /// Cleanup and quit
     fn quit(&mut self);
+}
+
+pub(crate) fn help_text(width: usize) -> String {
+    html2text::from_read(HELP_HTML.as_bytes(), width)
 }

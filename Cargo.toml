@@ -24,6 +24,9 @@ strum_macros = { version = "0.24" }
 fltk = { version = "^1.4", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
 copypasta = "0.8"
 
+# CLI & TUI
+html2text = "0.6"
+
 # CLI
 rustyline = "11"
 
