@@ -9,12 +9,11 @@ use crate::{
 };
 
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{error::Error, io::Stdout};
-use tui::{
+use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
@@ -22,6 +21,7 @@ use tui::{
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
     Frame, Terminal,
 };
+use std::{error::Error, io::Stdout};
 
 #[derive(Debug, Clone, Default)]
 struct CalcInfo {
@@ -91,8 +91,8 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
                 .cloned()
                 .unwrap_or_else(|| " ".to_string());
             let lines = data.lines().count() as u16;
-            // @@/TODO: Right justify data Cell (c.f. https://github.com/fdehau/tui-rs/issues/295)
-            Row::new(vec![Cell::from(format!("{:4}: ", x + 1)), Cell::from(data)]).height(lines)
+            // TODO: Right align second cell [https://github.com/tui-rs-revival/ratatui/issues/257]
+            Row::new(vec![Cell::from(format!("{:4}:", x + 1)), Cell::from(data)]).height(lines)
         })
         .collect::<Vec<_>>();
 
@@ -107,9 +107,10 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
             info.error.clone().unwrap_or_default(),
             Style::default().fg(Color::Red),
         )))
-        .widths(&widths);
+        .widths(&widths)
+        .column_spacing(1);
     f.render_stateful_widget(t, chunks[0], &mut info.state);
-    let input = Paragraph::new(info.input.as_ref());
+    let input = Paragraph::new(info.input.as_str());
     f.render_widget(input, chunks[1]);
 
     if info.help_popup {
@@ -118,7 +119,11 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
         let inner = block.inner(area);
         let text = help_text(inner.width as usize);
         info.help_height = inner.height;
-        info.help_max_scroll = text.lines().count().checked_sub(inner.height.into()).unwrap_or_default() as u16;
+        info.help_max_scroll = text
+            .lines()
+            .count()
+            .checked_sub(inner.height.into())
+            .unwrap_or_default() as u16;
         let p = Paragraph::new(text).scroll((info.help_scroll, 0));
         f.render_widget(Clear, area);
         f.render_widget(block, area);
@@ -173,14 +178,26 @@ impl CalcDisplay for TuiCalcUI {
                     break;
                 }
                 Ok(Event::Key(k)) => {
+                    let kcode = match k.code {
+                        KeyCode::Char(c) if k.modifiers.contains(KeyModifiers::SHIFT) => {
+                            KeyCode::Char(c.to_ascii_uppercase())
+                        }
+                        _ => k.code,
+                    };
+                    // These match key bindings for less(1)
                     if self.info.help_popup {
-                        // These match key bindings for less(1)
-                        match k.code {
+                        match kcode {
                             KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
                                 self.info.help_popup = false
                             }
-                            KeyCode::Home | KeyCode::Char('g') | KeyCode::Char('p') => self.info.help_scroll = 0,
-                            KeyCode::Down | KeyCode::Enter | KeyCode::Char('e') | KeyCode::Char('j') | KeyCode::Char('J') => {
+                            KeyCode::Home | KeyCode::Char('g') | KeyCode::Char('p') => {
+                                self.info.help_scroll = 0
+                            }
+                            KeyCode::Down
+                            | KeyCode::Enter
+                            | KeyCode::Char('e')
+                            | KeyCode::Char('j')
+                            | KeyCode::Char('J') => {
                                 self.info.help_scroll = std::cmp::min(
                                     self.info.help_scroll + 1,
                                     self.info.help_max_scroll,
@@ -197,7 +214,10 @@ impl CalcDisplay for TuiCalcUI {
                                     .checked_sub(self.info.help_height / 2)
                                     .unwrap_or_default()
                             }
-                            KeyCode::PageDown | KeyCode::Char(' ') | KeyCode::Char('f') |  KeyCode::Char('z') => {
+                            KeyCode::PageDown
+                            | KeyCode::Char(' ')
+                            | KeyCode::Char('f')
+                            | KeyCode::Char('z') => {
                                 self.info.help_scroll = std::cmp::min(
                                     self.info.help_scroll + self.info.help_height,
                                     self.info.help_max_scroll,
@@ -216,12 +236,14 @@ impl CalcDisplay for TuiCalcUI {
                                     .checked_sub(self.info.help_height)
                                     .unwrap_or_default()
                             }
-                            KeyCode::End | KeyCode::Char('G') | KeyCode::Char('F') => self.info.help_scroll = self.info.help_max_scroll,
+                            KeyCode::End | KeyCode::Char('G') | KeyCode::Char('F') => {
+                                self.info.help_scroll = self.info.help_max_scroll
+                            }
                             _ => {}
                         }
                     } else {
-                        match k.code {
-                            KeyCode::Char(c) if k.modifiers.is_empty() => self.info.input.push(c),
+                        match kcode {
+                            KeyCode::Char(c) => self.info.input.push(c),
                             KeyCode::Enter => {
                                 let line = self.info.input.clone();
                                 self.info.input = "".to_string();

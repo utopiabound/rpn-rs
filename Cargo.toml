@@ -30,6 +30,6 @@ html2text = "0.6"
 # CLI
 rustyline = "11"
 
-# TUI
-crossterm = "0.25"
-tui = "0.19"
+# (Rata)TUI
+crossterm = "0.26"
+ratatui = "0.21"
