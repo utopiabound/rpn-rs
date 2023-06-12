@@ -18,3 +18,6 @@ target/release/rpn-rs: src/*.rs src/fixtures/help.html Cargo.*
 	cargo build --release
 
 
+test:
+	cargo clippy --all
+	cargo test

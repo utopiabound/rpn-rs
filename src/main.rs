@@ -149,6 +149,7 @@ fn main() {
                     "/" => stacks[0].try_binary(|a, b| a / b),
                     "!" => stacks[0].try_unary(|a| a.try_factorial()),
                     "abs" => stacks[0].try_unary(|a| a.try_abs()),
+                    "exp" => stacks[0].try_unary(|a| a.try_exp()),
                     "inv" => stacks[0].try_unary(|a| a.inv()),
                     "ln" => stacks[0].try_unary(|a| a.try_ln()),
                     "log" => stacks[0].try_unary(|a| a.try_log10()),
@@ -164,7 +165,8 @@ fn main() {
                     // Matrix Operations
                     "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
                     "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
-                    "ident" | "identity" => stacks[0].try_unary(Value::identity),
+                    "I" | "ident" | "identity" => stacks[0].try_unary(Value::identity),
+                    "J" | "ones" => stacks[0].try_unary(Value::ones),
                     "rref" => stacks[0].try_unary(|a| a.try_rref()),
                     // Binary Operations
                     "<<" | "lshift" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),

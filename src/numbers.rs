@@ -42,6 +42,9 @@ impl<T: Into<Scaler>> From<T> for Value {
 
 trait RpnMatrixExt {
     fn is_diagonal(&self) -> bool;
+    fn try_exp(&self) -> Result<Self, String>
+    where
+        Self: Sized;
 }
 
 impl RpnMatrixExt for Matrix<Scaler> {
@@ -57,6 +60,28 @@ impl RpnMatrixExt for Matrix<Scaler> {
             true
         } else {
             false
+        }
+    }
+    fn try_exp(&self) -> Result<Self, String> {
+        if !self.is_square() {
+            Err("Matrix is not square, cannot compute exp(M)".to_string())
+        } else if self.is_diagonal() {
+            // https://en.wikipedia.org/wiki/Matrix_exponential#Diagonalizable_case
+            let mut m = Matrix::one(self.rows()).map_err(|e| e.to_string())?;
+            for i in 0..self.rows() {
+                m[i][i] = self[i][i].clone().exp();
+            }
+            Ok(m)
+        } else if (self.clone() * self.clone()).as_ref() == Ok(self) {
+            // https://en.wikipedia.org/wiki/Matrix_exponential#Projection_case
+            // I + (e - 1)*M (where M*M == M)
+            let ident = Self::one(self.rows()).map_err(|e| e.to_string())?;
+            (ident + (self.clone() * (Scaler::one().exp() - Scaler::one())))
+                .map_err(|e| e.to_string())
+        } else {
+            // c.f. impl Pow<Value> for Value
+            // TODO Genral Diagonalizable: https://en.wikipedia.org/wiki/Matrix_exponential#Diagonalizable_case
+            Err("NYI: non-trivial exp(M)".to_string())
         }
     }
 }
@@ -203,6 +228,18 @@ fn is_integer(x: &Rational) -> bool {
 }
 
 impl Scaler {
+    /// Exponent (e^x)
+    pub fn exp(self) -> Self {
+        match self {
+            Scaler::Int(x) => {
+                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
+                Scaler::from(f.exp())
+            }
+            Scaler::Float(x) => Scaler::from(x.exp()),
+            Scaler::Complex(x) => Scaler::from(x.exp()),
+        }
+    }
+
     /// Natural Logarithm
     pub fn ln(self) -> Self {
         match self {
@@ -266,6 +303,7 @@ impl Scaler {
         }
     }
 
+    /// Return the numberator (as usize) iff denominator is 1
     fn get_usize(self) -> Option<usize> {
         match self {
             Scaler::Int(x) => is_integer(&x).then(|| x.numer().to_usize()).flatten(),
@@ -331,6 +369,22 @@ impl Zero for Scaler {
 }
 
 impl Value {
+    /// Return the numerator iff denominator is 1
+    fn get_integer(&self) -> Option<Integer> {
+        match self {
+            Value::Scaler(Scaler::Int(x)) => is_integer(x).then(|| x.numer().clone()),
+            _ => None,
+        }
+    }
+
+    /// Return the numerator (as usize) iff denominator is 1
+    fn get_usize(&self) -> Option<usize> {
+        match self {
+            Value::Scaler(Scaler::Int(x)) => is_integer(x).then(|| x.numer().to_usize()).flatten(),
+            _ => None,
+        }
+    }
+
     pub fn is_zero(&self) -> bool {
         match self {
             Value::Scaler(x) => x.is_zero(),
@@ -393,9 +447,7 @@ impl Value {
 
     pub fn try_factorial(self) -> Result<Value, String> {
         match self {
-            Value::Scaler(Scaler::Int(x))
-                if x.denom().to_u32() == Some(1) && x.clone().signum() >= 0 =>
-            {
+            Value::Scaler(Scaler::Int(x)) if is_integer(&x) && x.clone().signum() >= 0 => {
                 let max = x.numer();
                 let mut n = Integer::from(1);
                 let mut i = Integer::from(2);
@@ -411,14 +463,12 @@ impl Value {
 
     pub fn try_modulo(&self, b: &Value) -> Result<Value, String> {
         if b.is_zero() {
-            return Err("Division by zero".to_string());
+            Err("Division by zero".to_string())
+        } else if let (Some(a), Some(b)) = (self.get_integer(), b.get_integer()) {
+            Ok(Value::from(a.rem_euc(b)))
+        } else {
+            Err(format!("{self:?} mod {b:?} is not INT mod INT"))
         }
-        if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
-            if a.denom().to_u32() == Some(1) && b.denom().to_u32() == Some(1) {
-                return Ok(Value::from(a.numer().clone().rem_euc(b.numer())));
-            }
-        }
-        Err(format!("{self:?} mod {b:?} is not INT mod INT"))
     }
 
     pub fn try_root(self, other: Value) -> Result<Self, String> {
@@ -426,37 +476,19 @@ impl Value {
     }
 
     pub fn try_rshift(&self, b: &Value) -> Result<Self, String> {
-        if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
-            if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_usize() {
-                    return Ok(Value::from(a.clone() >> b));
-                }
-            }
-        } else if let (Value::Scaler(Scaler::Float(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
-            if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_usize() {
-                    return Ok(Value::from(a.clone() >> b));
-                }
-            }
+        match (self, b.get_usize()) {
+            (Value::Scaler(Scaler::Int(a)), Some(b)) => Ok(Value::from(a.clone() >> b)),
+            (Value::Scaler(Scaler::Float(a)), Some(b)) => Ok(Value::from(a.clone() >> b)),
+            _ => Err(format!("{self:?} >> {b:?} is not REAL >> INTEGER(u32)")),
         }
-        Err(format!("{self:?} >> {b:?} is not REAL >> INTEGER(u32)"))
     }
 
     pub fn try_lshift(&self, b: &Value) -> Result<Self, String> {
-        if let (Value::Scaler(Scaler::Int(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
-            if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_usize() {
-                    return Ok(Value::Scaler(Scaler::from(a.clone() << b)));
-                }
-            }
-        } else if let (Value::Scaler(Scaler::Float(a)), Value::Scaler(Scaler::Int(b))) = (self, b) {
-            if b.denom().to_u32() == Some(1) {
-                if let Some(b) = b.numer().to_usize() {
-                    return Ok(Value::from(a.clone() << b));
-                }
-            }
+        match (self, b.get_usize()) {
+            (Value::Scaler(Scaler::Int(a)), Some(b)) => Ok(Value::from(a.clone() << b)),
+            (Value::Scaler(Scaler::Float(a)), Some(b)) => Ok(Value::from(a.clone() << b)),
+            _ => Err(format!("{self:?} << {b:?} is not REAL << INTEGER(u32)")),
         }
-        Err(format!("{self:?} << {b:?} is not REAL >> INTEGER(u32)"))
     }
 
     pub fn try_ln(self) -> Result<Self, String> {
@@ -470,6 +502,13 @@ impl Value {
         match self {
             Value::Scaler(x) => Ok(Value::Scaler(x.abs())),
             Value::Matrix(_) => Err("NYI".to_string()),
+        }
+    }
+
+    pub fn try_exp(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(Value::Scaler(x.exp())),
+            Value::Matrix(x) => x.try_exp().map(Value::Matrix),
         }
     }
 
@@ -566,6 +605,23 @@ impl Value {
                     Err("Matrix not square, cannot convert to identity".to_string())
                 }
             }
+        }
+    }
+
+    pub fn ones(n: Value) -> Result<Self, String> {
+        match n {
+            Value::Scaler(n) => {
+                if let Some(x) = n.get_usize() {
+                    Matrix::new(x, x, Scaler::one())
+                        .map(Value::Matrix)
+                        .map_err(|e| e.to_string())
+                } else {
+                    Err("Identity Matrix can only be created with integer size".to_string())
+                }
+            }
+            Value::Matrix(x) => Matrix::new(x.rows(), x.cols(), Scaler::one())
+                .map(Value::Matrix)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -691,7 +747,8 @@ impl Pow<Value> for Value {
                     }
                     Ok(acc.into())
                 } else {
-                    // General case a^m == U * a^D * U^-1 where D is a diagonal matrix and m == U * D * U^-1
+                    // c.f. RpnMatrixExt::try_exp()
+                    // TODO: General case a^m == U * a^D * U^-1 where D is a diagonal matrix and m == U * D * U^-1
                     Err("NYI: scaler ^ matrix".to_string())
                 }
             }
@@ -1154,5 +1211,17 @@ mod test {
         let f3 = Scaler::from(3);
 
         assert_eq!(a.factor(), Ok(vec![f2.clone(), f2, f3]));
+    }
+
+    #[test]
+    fn test_value_get_usize_some() {
+        let a = Value::from(Scaler::from(rug::Rational::from((5, 1))));
+        assert_eq!(a.get_usize(), Some(5));
+    }
+
+    #[test]
+    fn test_value_get_usize_none() {
+        let b = Value::from(Scaler::from(rug::Rational::from((5, 2))));
+        assert_eq!(b.get_usize(), None);
     }
 }
