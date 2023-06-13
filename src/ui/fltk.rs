@@ -224,7 +224,7 @@ impl CalcDisplay for FltkCalcDisplay {
                     self.table.redraw();
                 }
                 FltkMessage::About => self.dialog(format!(
-                    "RPN Calculator {} (c) 2022",
+                    "RPN Calculator {} (c) 2023",
                     env!("CARGO_PKG_VERSION")
                 )),
                 FltkMessage::Copy => {

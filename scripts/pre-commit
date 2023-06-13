@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+# rustfmt edition should match what is present in Cargo.toml
+# weblint is provided by the HTML::Lint perl package
+
+HAS_ISSUES=false
+
+for file in $(git diff --name-only --staged); do
+    FMT_RESULT=""
+    if [ ! -e $file ]; then
+	continue
+    fi
+    case "$file" in
+	*.rs) FMT_RESULT="$(rustfmt --edition 2021 --check $file 2>/dev/null || true)" ;;
+	*.html) [ -n "$(which weblint)" ] && FMT_RESULT="$(weblint $file)" ;;
+	*.md) [ -n "$(which mdl)" ] && FMT_RESULT="$(mdl $file)" ;;
+    esac
+
+    if [ -n "$FMT_RESULT" ]; then
+        if $HAS_ISSUES; then
+            echo -n ", "
+        fi
+        echo -n "$file"
+        HAS_ISSUES=true
+    fi
+done
+
+if $HAS_ISSUES; then
+    echo -e "\nYour code has formatting issues in files listed above. Format your code!"
+    exit 1
+fi
+
+exit 0
