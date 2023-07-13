@@ -152,11 +152,14 @@ impl TryFrom<&str> for Scaler {
 
         if value.contains(&['(', 'i'][..]) {
             // Change "1+2i" -> "(1 2)"
-            let re = Regex::new(r"(?P<r>\d+([.]\d+)?)\s*\+\s*(?P<i>\d+([.]\d+)?)i").unwrap();
-            let value = re.replace(value, "($r $i)").into_owned();
+            let re = Regex::new(
+                r"(?P<sr>[+-])?\s*(?P<r>\d+([.]\d+)?)\s*(?P<si>[+-])\s*(?P<i>\d+([.]\d+)?)i",
+            )
+            .unwrap();
+            let value = re.replace(value, "($sr$r $si$i)").into_owned();
             // Change "3i" -> "(0 3)"
-            let re = Regex::new(r"(?P<i>\d+([.]\d+)?)i").unwrap();
-            let value = re.replace(&value, "(0 $i)").into_owned();
+            let re = Regex::new(r"(?P<si>[+-])?\s*(?P<i>\d+([.]\d+)?)i").unwrap();
+            let value = re.replace(&value, "(0 $si$i)").into_owned();
 
             let v = Complex::parse(value).map_err(|e| e.to_string())?;
             let c = Complex::with_val(FLOAT_PRECISION, v);
@@ -311,6 +314,7 @@ impl Scaler {
         }
     }
 
+    // @@ Float::to_string_radix is kind of terrible
     pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
             Scaler::Int(x) => {
@@ -336,11 +340,24 @@ impl Scaler {
             Scaler::Complex(x) => {
                 let r = x.real();
                 let i = x.imag();
-                // @@ RADIX && check Float is normal
                 if r.is_zero() {
-                    format!("{}i", i.to_f64())
+                    if i.is_normal() && radix == Radix::Decimal {
+                        format!("{}i", i.to_f64())
+                    } else {
+                        format!("{}i", i.to_string_radix(radix.into(), None))
+                    }
                 } else {
-                    format!("{}+{}i", r.to_f64(), i.to_f64())
+                    let sign = if i.is_sign_positive() { "+" } else { "" };
+                    if r.is_normal() && i.is_normal() && radix == Radix::Decimal {
+                        format!("{}{}{}i", r.to_f64(), sign, i.to_f64())
+                    } else {
+                        format!(
+                            "{}{}{}i",
+                            r.to_string_radix(radix.into(), None),
+                            sign,
+                            i.to_string_radix(radix.into(), None)
+                        )
+                    }
                 }
             }
         }
@@ -666,7 +683,13 @@ impl Inv for Value {
 
     fn inv(self) -> Self::Output {
         match self {
-            Value::Scaler(x) => Ok(Value::Scaler(x.inv())),
+            Value::Scaler(x) => {
+                if x.is_zero() {
+                    Err("Error: Division by zero".to_string())
+                } else {
+                    Ok(Value::Scaler(x.inv()))
+                }
+            }
             Value::Matrix(x) => {
                 if let Ok(Some(m)) = x.inv() {
                     Ok(Value::Matrix(m))
@@ -1179,7 +1202,7 @@ mod test {
     use num_traits::{One, Zero};
 
     #[test]
-    fn test_scaler_one_equality() {
+    fn scaler_one_equality() {
         let a = Scaler::one();
         let b = Scaler::Float(Float::with_val(FLOAT_PRECISION, 1.0));
         let c = Scaler::Complex(Complex::with_val(FLOAT_PRECISION, (1.0, 0)));
@@ -1192,7 +1215,7 @@ mod test {
     }
 
     #[test]
-    fn test_scaler_zero_equality() {
+    fn scaler_zero_equality() {
         let a = Scaler::zero();
         let b = Scaler::Float(Float::with_val(FLOAT_PRECISION, 0.0));
         let c = Scaler::Complex(Complex::with_val(FLOAT_PRECISION, (0.0, 0.0)));
@@ -1205,7 +1228,7 @@ mod test {
     }
 
     #[test]
-    fn test_factor() {
+    fn scaler_factor() {
         let a = Scaler::from(12);
         let f2 = Scaler::from(2);
         let f3 = Scaler::from(3);
@@ -1214,14 +1237,49 @@ mod test {
     }
 
     #[test]
-    fn test_value_get_usize_some() {
+    fn value_get_usize_some() {
         let a = Value::from(Scaler::from(rug::Rational::from((5, 1))));
         assert_eq!(a.get_usize(), Some(5));
     }
 
     #[test]
-    fn test_value_get_usize_none() {
+    fn value_get_usize_none() {
         let b = Value::from(Scaler::from(rug::Rational::from((5, 2))));
         assert_eq!(b.get_usize(), None);
+    }
+
+    #[test]
+    fn scaler_from_str() {
+        let a = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, 2.0)));
+        let b = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -2.0)));
+
+        assert_eq!(Scaler::try_from("0"), Ok(Scaler::from(0)));
+        assert_eq!(Scaler::try_from("-1"), Ok(Scaler::from(-1)));
+        assert_eq!(Scaler::try_from("+1"), Ok(Scaler::from(1)));
+        assert_eq!(Scaler::try_from("(0 2)"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0+2i"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0 +2i"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0 + 2i"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("2i"), Ok(a));
+        assert_eq!(Scaler::try_from("(0 -2)"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("0-2i"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("0 -2i"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("0 - 2i"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("-0-2i"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("+0-2i"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("-2i"), Ok(b));
+    }
+
+    #[test]
+    fn scaler_to_string_radix() {
+        let a = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (10.0, 20.0)));
+        let b = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -21.0)));
+
+        assert_eq!(a.to_string_radix(Radix::Decimal, true).as_str(), "10+20i");
+        assert_eq!(b.to_string_radix(Radix::Decimal, true).as_str(), "-21i");
+        assert_eq!(a.to_string_radix(Radix::Decimal, false).as_str(), "10+20i");
+        assert_eq!(b.to_string_radix(Radix::Decimal, false).as_str(), "-21i");
+        //assert_eq!(a.to_string_radix(Radix::Hex, true).as_str(), "0xa+0x14i");
+        //assert_eq!(b.to_string_radix(Radix::Hex, true).as_str(), "-0x15i");
     }
 }
