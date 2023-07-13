@@ -1279,6 +1279,7 @@ mod test {
         assert_eq!(b.to_string_radix(Radix::Decimal, true).as_str(), "-21i");
         assert_eq!(a.to_string_radix(Radix::Decimal, false).as_str(), "10+20i");
         assert_eq!(b.to_string_radix(Radix::Decimal, false).as_str(), "-21i");
+        // @@ ideally this should be the answer
         //assert_eq!(a.to_string_radix(Radix::Hex, true).as_str(), "0xa+0x14i");
         //assert_eq!(b.to_string_radix(Radix::Hex, true).as_str(), "-0x15i");
     }

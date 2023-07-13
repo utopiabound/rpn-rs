@@ -33,8 +33,6 @@ fn handle_err(flavor: Flavor, e: impl std::fmt::Display) -> ! {
 fn main() {
     let stack_undo = 10;
 
-    env_logger::init();
-
     let cmd = App::parse();
 
     let mut ui = match ui::get_ui(cmd.flavor) {
@@ -212,7 +210,6 @@ fn main() {
                             stacks.pop_back();
                         }
                         need_redisplay = true;
-                        log::debug!("writing: {:?}", stacks[0]);
                     }
                     Return::Noop => {
                         stacks.pop_front();

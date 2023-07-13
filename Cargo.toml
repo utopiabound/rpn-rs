@@ -8,7 +8,6 @@ categories = [ "gui", "mathematics", "command-line-utilities" ]
 
 [dependencies]
 clap = { version = "4", features = ["derive", "wrap_help"] }
-env_logger = "0.9"
 #libmat = "0.3"
 libmat = { git = "https://github.com/utopiabound/libmat", branch = "rref" }
 log = "0.4"

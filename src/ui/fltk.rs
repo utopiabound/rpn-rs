@@ -349,10 +349,7 @@ impl StackOutput {
                 s.set_col_width(0, w);
                 true
             }
-            e => {
-                log::trace!("Table Event: {e:?}");
-                false
-            }
+            _ => false,
         });
 
         let data_c = data.clone();
@@ -431,7 +428,6 @@ impl StackOutput {
         let len = self.data.borrow().len() as i32;
         let rn = len + x1 - total_rows;
         if rn < 0 {
-            log::debug!("Selection is Empty");
             return Ok("".to_string());
         }
 
