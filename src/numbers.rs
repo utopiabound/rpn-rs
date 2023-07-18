@@ -9,11 +9,14 @@ use regex::Regex;
 use rug::{
     float::{Constant, Round, Special},
     ops::{DivAssignRound, DivFromRound, Pow, RemRounding},
-    Complex, Float, Integer, Rational,
+    Complete, Complex, Float, Integer, Rational,
 };
 use std::{cmp::Ordering, ops};
 
 const FLOAT_PRECISION: u32 = 256;
+// This determines the number of digits that Floats are rounded to.
+// This allow decimal 0.1 to print as "0.1" instead of "0.10...02"
+const FLOAT_STRING_DIGITS: usize = 72;
 
 #[derive(Debug, Clone)]
 pub enum Scaler {
@@ -80,8 +83,62 @@ impl RpnMatrixExt for Matrix<Scaler> {
                 .map_err(|e| e.to_string())
         } else {
             // c.f. impl Pow<Value> for Value
-            // TODO Genral Diagonalizable: https://en.wikipedia.org/wiki/Matrix_exponential#Diagonalizable_case
+            // @@TODO Genral Diagonalizable: https://en.wikipedia.org/wiki/Matrix_exponential#Diagonalizable_case
             Err("NYI: non-trivial exp(M)".to_string())
+        }
+    }
+}
+
+trait RpnToStringScaler {
+    fn to_string_scaler(&self, radix: Radix) -> String;
+}
+
+impl RpnToStringScaler for Float {
+    fn to_string_scaler(&self, radix: Radix) -> String {
+        let (sign, s, exp) = self.to_sign_string_exp(radix.into(), Some(FLOAT_STRING_DIGITS));
+        let len = s.len() as i32;
+
+        let s = if let Some(exp) = exp {
+            if exp > 0 {
+                if exp >= len {
+                    s + &"0".repeat((exp - len) as usize)
+                } else {
+                    let mut v = s;
+                    v.insert(exp as usize, '.');
+                    v.trim_end_matches('0').trim_end_matches('.').to_string()
+                }
+            } else {
+                "0.".to_string() + &"0".repeat(exp.abs_diff(0) as usize) + s.trim_end_matches('0')
+            }
+        } else if self.is_zero() {
+            s
+        } else {
+            return s;
+        };
+        format!("{}{}{s}", if sign { "-" } else { "" }, radix.prefix())
+    }
+}
+
+impl RpnToStringScaler for Rational {
+    fn to_string_scaler(&self, radix: Radix) -> String {
+        let sign = match self.cmp0() {
+            Ordering::Less => "-",
+            Ordering::Equal => return "0".to_string(),
+            Ordering::Greater => "",
+        };
+        if self.is_integer() {
+            format!(
+                "{sign}{}{}",
+                radix.prefix(),
+                self.clone().abs().to_string_radix(radix.into())
+            )
+        } else {
+            format!(
+                "{sign}{r}{}/{r}{}",
+                self.numer().clone().abs().to_string_radix(radix.into()),
+                self.denom().clone().abs().to_string_radix(radix.into()),
+                r = radix.prefix()
+            )
         }
     }
 }
@@ -93,6 +150,43 @@ pub enum Radix {
     Hex,
     Binary,
     Octal,
+}
+
+impl Radix {
+    pub fn prefix(&self) -> &str {
+        match self {
+            Radix::Decimal => "",
+            Radix::Hex => "0x",
+            Radix::Binary => "0b",
+            Radix::Octal => "0o",
+        }
+    }
+    pub fn from_prefix(val: &str) -> Self {
+        match val.to_lowercase().as_str() {
+            "0b" | "b" => Self::Binary,
+            "0o" | "o" => Self::Octal,
+            "0d" | "d" => Self::Decimal,
+            "0x" | "x" => Self::Hex,
+            _ => Self::default(),
+        }
+    }
+
+    // (is_neg, Radix, rest_of_string)
+    pub fn split_string(value: &str) -> (bool, Self, String) {
+        let re = Regex::new(r"^(-)?(0[xXoObBdD])?(.*)").unwrap();
+        let value = value.trim_start_matches('+');
+        if let Some(caps) = re.captures(value) {
+            (
+                caps.get(1).is_some(),
+                caps.get(2)
+                    .map(|x| Radix::from_prefix(x.as_str()))
+                    .unwrap_or_default(),
+                caps[3].to_string(),
+            )
+        } else {
+            (false, Self::default(), value.to_string())
+        }
+    }
 }
 
 impl From<Radix> for i32 {
@@ -144,44 +238,60 @@ impl From<Complex> for Scaler {
     }
 }
 
+fn parse_float(val: &str) -> Result<Float, String> {
+    let (f, r, v) = Radix::split_string(val);
+    let v = Float::parse_radix(format!("{}{v}", if f { "-" } else { "" }), r.into())
+        .map_err(|e| format!("{v}: {e}"))?;
+    Ok(Float::with_val(FLOAT_PRECISION, v))
+}
+
+fn parse_int(val: &str) -> Result<Integer, String> {
+    let (f, r, v) = Radix::split_string(val);
+    let v = Integer::parse_radix(format!("{}{v}", if f { "-" } else { "" }), r.into())
+        .map_err(|e| format!("{v}: {e}"))?;
+    Ok(v.complete())
+}
+
 impl TryFrom<&str> for Scaler {
     type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let radixre = Regex::new(r"0([xXoObBdD])(.*)").unwrap();
-
         if value.contains(&['(', 'i'][..]) {
             // Change "1+2i" -> "(1 2)"
             let re = Regex::new(
-                r"(?P<sr>[+-])?\s*(?P<r>\d+([.]\d+)?)\s*(?P<si>[+-])\s*(?P<i>\d+([.]\d+)?)i",
+                r"(\(?(?P<sr>[+-])?\s*(?P<r>(?:0[xXoObBdD])?[[:xdigit:]]+(?:[.][[:xdigit:]]+)?))?\s*(?P<si>[+-])?\s*(?P<i>(?:0[xXoObBdD])?[[:xdigit:]]+(?:[.][[:xdigit:]]+)?)[i)]",
             )
-            .unwrap();
-            let value = re.replace(value, "($sr$r $si$i)").into_owned();
-            // Change "3i" -> "(0 3)"
-            let re = Regex::new(r"(?P<si>[+-])?\s*(?P<i>\d+([.]\d+)?)i").unwrap();
-            let value = re.replace(&value, "(0 $si$i)").into_owned();
+                .unwrap();
+            let caps = re
+                .captures(value)
+                .ok_or_else(|| format!("Failed to parse: {value}"))?;
+            let real = format!(
+                "{}{}",
+                caps.name("sr").map(|x| x.as_str()).unwrap_or(""),
+                caps.name("r").map(|x| x.as_str()).unwrap_or("0")
+            );
+            let imag = format!(
+                "{}{}",
+                caps.name("si").map(|x| x.as_str()).unwrap_or(""),
+                caps.name("i").map(|x| x.as_str()).unwrap_or("0")
+            );
 
-            let v = Complex::parse(value).map_err(|e| e.to_string())?;
-            let c = Complex::with_val(FLOAT_PRECISION, v);
-            Ok(Scaler::from(c))
+            let r = parse_float(&real)?;
+            let i = parse_float(&imag)?;
+
+            Ok(Scaler::from(Complex::from((r, i))))
         } else if value.contains('[') {
             Err("Parsing Matrix as Scaler".to_string())
         } else if value.contains('.') {
-            let v = Float::parse(value).map_err(|e| e.to_string())?;
-            let f = Float::with_val(FLOAT_PRECISION, v);
-            Ok(Scaler::from(f))
-        } else if let Some(caps) = radixre.captures(value) {
-            match caps[1].to_lowercase().as_str() {
-                "b" => Scaler::from_str_radix(&caps[2], 2),
-                "o" => Scaler::from_str_radix(&caps[2], 8),
-                "d" => Scaler::from_str_radix(&caps[2], 10),
-                "x" => Scaler::from_str_radix(&caps[2], 16),
-                r => Err(format!("Invalid radix {r} in {value}")),
-            }
-        } else if let Ok(v) = Rational::parse(value) {
-            Ok(Scaler::from(Rational::from(v)))
+            Ok(Scaler::from(parse_float(value)?))
+        } else if let Some((numer, denom)) = value.split_once('/') {
+            let n = parse_int(numer)?;
+            let d = parse_int(denom)?;
+
+            Ok(Scaler::from(Rational::from((n, d))))
         } else {
-            Err(format!("Unknown value: {value}"))
+            let v = parse_int(value)?;
+            Ok(Scaler::from(Rational::from(v)))
         }
     }
 }
@@ -224,10 +334,6 @@ impl Num for Scaler {
             .map(|v| Scaler::from(Rational::from(v)))
             .map_err(|e| e.to_string())
     }
-}
-
-fn is_integer(x: &Rational) -> bool {
-    x.denom().to_u32() == Some(1)
 }
 
 impl Scaler {
@@ -273,7 +379,7 @@ impl Scaler {
             Scaler::Int(x) => {
                 if x < 0 {
                     Err("Cannot Factor Negative Number".to_string())
-                } else if !is_integer(&x) {
+                } else if !x.is_integer() {
                     Err("Cannot Factor Rational Number".to_string())
                 } else if x == 1 {
                     Ok(vec![x.into()])
@@ -309,55 +415,35 @@ impl Scaler {
     /// Return the numberator (as usize) iff denominator is 1
     fn get_usize(self) -> Option<usize> {
         match self {
-            Scaler::Int(x) => is_integer(&x).then(|| x.numer().to_usize()).flatten(),
+            Scaler::Int(x) => x.is_integer().then(|| x.numer().to_usize()).flatten(),
             _ => None,
         }
     }
 
-    // @@ Float::to_string_radix is kind of terrible
     pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
         match self {
             Scaler::Int(x) => {
-                if !rational && !is_integer(x) {
-                    if radix == Radix::Decimal {
-                        x.to_f64().to_string()
-                    } else {
-                        // @@ this is kind of ugly
-                        let f: Float = x * Float::with_val(32, 1.0);
-                        f.to_string_radix(radix.into(), None)
-                    }
+                if !rational && !x.is_integer() {
+                    let f: Float = x * Float::with_val(32, 1.0);
+                    f.to_string_scaler(radix)
                 } else {
-                    x.to_string_radix(radix.into())
+                    x.to_string_scaler(radix)
                 }
             }
-            Scaler::Float(x) => {
-                if x.is_normal() && radix == Radix::Decimal {
-                    x.to_f64().to_string()
-                } else {
-                    x.to_string_radix(radix.into(), None)
-                }
-            }
+            Scaler::Float(x) => x.to_string_scaler(radix),
             Scaler::Complex(x) => {
                 let r = x.real();
                 let i = x.imag();
                 if r.is_zero() {
-                    if i.is_normal() && radix == Radix::Decimal {
-                        format!("{}i", i.to_f64())
-                    } else {
-                        format!("{}i", i.to_string_radix(radix.into(), None))
-                    }
+                    format!("{}i", i.to_string_scaler(radix))
                 } else {
                     let sign = if i.is_sign_positive() { "+" } else { "" };
-                    if r.is_normal() && i.is_normal() && radix == Radix::Decimal {
-                        format!("{}{}{}i", r.to_f64(), sign, i.to_f64())
-                    } else {
-                        format!(
-                            "{}{}{}i",
-                            r.to_string_radix(radix.into(), None),
-                            sign,
-                            i.to_string_radix(radix.into(), None)
-                        )
-                    }
+                    format!(
+                        "{}{}{}i",
+                        r.to_string_scaler(radix),
+                        sign,
+                        i.to_string_scaler(radix)
+                    )
                 }
             }
         }
@@ -389,7 +475,7 @@ impl Value {
     /// Return the numerator iff denominator is 1
     fn get_integer(&self) -> Option<Integer> {
         match self {
-            Value::Scaler(Scaler::Int(x)) => is_integer(x).then(|| x.numer().clone()),
+            Value::Scaler(Scaler::Int(x)) => x.is_integer().then(|| x.numer().clone()),
             _ => None,
         }
     }
@@ -397,7 +483,7 @@ impl Value {
     /// Return the numerator (as usize) iff denominator is 1
     fn get_usize(&self) -> Option<usize> {
         match self {
-            Value::Scaler(Scaler::Int(x)) => is_integer(x).then(|| x.numer().to_usize()).flatten(),
+            Value::Scaler(Scaler::Int(x)) => x.is_integer().then(|| x.numer().to_usize()).flatten(),
             _ => None,
         }
     }
@@ -464,7 +550,7 @@ impl Value {
 
     pub fn try_factorial(self) -> Result<Value, String> {
         match self {
-            Value::Scaler(Scaler::Int(x)) if is_integer(&x) && x.clone().signum() >= 0 => {
+            Value::Scaler(Scaler::Int(x)) if x.is_integer() && x.clone().signum() >= 0 => {
                 let max = x.numer();
                 let mut n = Integer::from(1);
                 let mut i = Integer::from(2);
@@ -771,7 +857,7 @@ impl Pow<Value> for Value {
                     Ok(acc.into())
                 } else {
                     // c.f. RpnMatrixExt::try_exp()
-                    // TODO: General case a^m == U * a^D * U^-1 where D is a diagonal matrix and m == U * D * U^-1
+                    // @@TODO: General case a^m == U * a^D * U^-1 where D is a diagonal matrix and m == U * D * U^-1
                     Err("NYI: scaler ^ matrix".to_string())
                 }
             }
@@ -1249,17 +1335,16 @@ mod test {
     }
 
     #[test]
-    fn scaler_from_str() {
+    fn scaler_from_str_complex() {
         let a = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, 2.0)));
         let b = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -2.0)));
 
-        assert_eq!(Scaler::try_from("0"), Ok(Scaler::from(0)));
-        assert_eq!(Scaler::try_from("-1"), Ok(Scaler::from(-1)));
-        assert_eq!(Scaler::try_from("+1"), Ok(Scaler::from(1)));
         assert_eq!(Scaler::try_from("(0 2)"), Ok(a.clone()));
         assert_eq!(Scaler::try_from("0+2i"), Ok(a.clone()));
         assert_eq!(Scaler::try_from("0 +2i"), Ok(a.clone()));
         assert_eq!(Scaler::try_from("0 + 2i"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0 + 0x2i"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0b0.0 + 0x2i"), Ok(a.clone()));
         assert_eq!(Scaler::try_from("2i"), Ok(a));
         assert_eq!(Scaler::try_from("(0 -2)"), Ok(b.clone()));
         assert_eq!(Scaler::try_from("0-2i"), Ok(b.clone()));
@@ -1267,20 +1352,76 @@ mod test {
         assert_eq!(Scaler::try_from("0 - 2i"), Ok(b.clone()));
         assert_eq!(Scaler::try_from("-0-2i"), Ok(b.clone()));
         assert_eq!(Scaler::try_from("+0-2i"), Ok(b.clone()));
+        assert_eq!(Scaler::try_from("+0o0-0d2.0i"), Ok(b.clone()));
         assert_eq!(Scaler::try_from("-2i"), Ok(b));
+    }
+
+    #[test]
+    fn scaler_from_str_rational() {
+        let a = Scaler::from(rug::Rational::from((1, 2)));
+
+        assert_eq!(Scaler::try_from("0"), Ok(Scaler::from(0)));
+        assert_eq!(Scaler::try_from("-1"), Ok(Scaler::from(-1)));
+        assert_eq!(Scaler::try_from("+1"), Ok(Scaler::from(1)));
+        assert_eq!(Scaler::try_from("1/2"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0x1/0x2"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0b1/2"), Ok(a.clone()));
+        assert_eq!(Scaler::try_from("0b1/0o2"), Ok(a));
     }
 
     #[test]
     fn scaler_to_string_radix() {
         let a = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (10.0, 20.0)));
         let b = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -21.0)));
+        let c = Scaler::try_from("1/2").unwrap();
 
         assert_eq!(a.to_string_radix(Radix::Decimal, true).as_str(), "10+20i");
         assert_eq!(b.to_string_radix(Radix::Decimal, true).as_str(), "-21i");
+        assert_eq!(c.to_string_radix(Radix::Decimal, true).as_str(), "1/2");
         assert_eq!(a.to_string_radix(Radix::Decimal, false).as_str(), "10+20i");
         assert_eq!(b.to_string_radix(Radix::Decimal, false).as_str(), "-21i");
-        // @@ ideally this should be the answer
-        //assert_eq!(a.to_string_radix(Radix::Hex, true).as_str(), "0xa+0x14i");
-        //assert_eq!(b.to_string_radix(Radix::Hex, true).as_str(), "-0x15i");
+        assert_eq!(c.to_string_radix(Radix::Decimal, false).as_str(), "0.5");
+        assert_eq!(a.to_string_radix(Radix::Hex, true).as_str(), "0xa+0x14i");
+        assert_eq!(b.to_string_radix(Radix::Hex, true).as_str(), "-0x15i");
+        assert_eq!(c.to_string_radix(Radix::Hex, true).as_str(), "0x1/0x2");
+        assert_eq!(c.to_string_radix(Radix::Hex, false).as_str(), "0x0.8");
+    }
+
+    #[test]
+    fn string_scaler_float() {
+        let a = rug::Float::with_val(FLOAT_PRECISION, 1.5);
+        let b = rug::Float::with_val(FLOAT_PRECISION, -1.5);
+        let c = rug::Float::with_val(FLOAT_PRECISION, 0.25);
+        let d = rug::Float::with_val(FLOAT_PRECISION, 16.0);
+        assert_eq!(a.to_string_scaler(Radix::Decimal), "1.5");
+        assert_eq!(a.to_string_scaler(Radix::Hex), "0x1.8");
+        assert_eq!(a.to_string_scaler(Radix::Octal), "0o1.4");
+        assert_eq!(a.to_string_scaler(Radix::Binary), "0b1.1");
+        assert_eq!(b.to_string_scaler(Radix::Decimal), "-1.5");
+        assert_eq!(b.to_string_scaler(Radix::Hex), "-0x1.8");
+        assert_eq!(b.to_string_scaler(Radix::Octal), "-0o1.4");
+        assert_eq!(b.to_string_scaler(Radix::Binary), "-0b1.1");
+        assert_eq!(c.to_string_scaler(Radix::Decimal), "0.25");
+        assert_eq!(c.to_string_scaler(Radix::Hex), "0x0.4");
+        assert_eq!(c.to_string_scaler(Radix::Octal), "0o0.2");
+        assert_eq!(c.to_string_scaler(Radix::Binary), "0b0.01");
+        assert_eq!(d.to_string_scaler(Radix::Decimal), "16");
+        assert_eq!(d.to_string_scaler(Radix::Hex), "0x10");
+        assert_eq!(d.to_string_scaler(Radix::Octal), "0o20");
+        assert_eq!(d.to_string_scaler(Radix::Binary), "0b10000");
+    }
+
+    #[test]
+    fn string_scaler_rational() {
+        let a = rug::Rational::from((-10, 1));
+        let b = rug::Rational::from((10, 11));
+        assert_eq!(a.to_string_scaler(Radix::Decimal), "-10");
+        assert_eq!(a.to_string_scaler(Radix::Hex), "-0xa");
+        assert_eq!(a.to_string_scaler(Radix::Octal), "-0o12");
+        assert_eq!(a.to_string_scaler(Radix::Binary), "-0b1010");
+        assert_eq!(b.to_string_scaler(Radix::Decimal), "10/11");
+        assert_eq!(b.to_string_scaler(Radix::Hex), "0xa/0xb");
+        assert_eq!(b.to_string_scaler(Radix::Octal), "0o12/0o13");
+        assert_eq!(b.to_string_scaler(Radix::Binary), "0b1010/0b1011");
     }
 }
