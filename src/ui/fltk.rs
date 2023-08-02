@@ -50,6 +50,11 @@ pub struct FltkCalcDisplay {
     clipboard: Box<dyn ClipboardProvider>,
 }
 
+fn resize_table(table: &mut table::Table, x: i32, y: i32, width: i32, height: i32) {
+    table.set_rows(row_count(height, 1));
+    table.set_col_width(0, width - 12 - (table.row_header_width() + 4));
+}
+
 impl CalcDisplay for FltkCalcDisplay {
     fn init() -> Result<Self, Box<dyn Error + Send + Sync>> {
         let app = app::App::default().with_scheme(app::Scheme::Gtk);
@@ -68,7 +73,7 @@ impl CalcDisplay for FltkCalcDisplay {
             .with_label("rpn-rs")
             .with_size(width, win_h);
 
-        let pack = Pack::default().with_size(width, win_h);
+        let mut pack = Pack::default().with_size(width, win_h);
         let clipboard = ClipboardContext::new()?;
 
         let mut menu = SysMenuBar::default().with_size(width, in_h);
@@ -166,10 +171,17 @@ impl CalcDisplay for FltkCalcDisplay {
         let error = Output::default().with_size(width, err_h);
 
         let table = StackOutput::new(width, out_h);
+        pack.resizable(&*table.table().borrow());
 
         let mut input = Input::default().with_size(width, in_h);
-        pack.resizable(table.table());
 
+        let t2 = table.table();
+        let other_height = win_h - out_h;
+        pack.resize_callback(move |_s, _x, _y, w, h| {
+            let tx = t2.borrow().x();
+            let mut t = t2.borrow_mut();
+            t.resize(0, tx, w, h - other_height);
+        });
         pack.end();
 
         app::set_focus(&input);
@@ -288,7 +300,7 @@ impl CalcDisplay for FltkCalcDisplay {
 }
 
 struct StackOutput {
-    table: table::Table,
+    table: Rc<RefCell<table::Table>>,
     radix: Rc<RefCell<Radix>>,
     rational: Rc<RefCell<bool>>,
     data: Rc<RefCell<Vec<Value>>>,
@@ -309,15 +321,17 @@ impl StackOutput {
         let radix = Rc::from(RefCell::from(Radix::Decimal));
         let rational = Rc::from(RefCell::from(true));
 
-        table.set_rows(row_count(height, 1));
         table.set_row_header(true);
-        table.set_row_resize(false);
+        //table.set_row_resize(false);
         table.set_cols(2);
         table.set_col_header(false);
-        table.set_col_width(0, width - 12 - (table.row_header_width() + 4));
+        resize_table(&mut table, 0, 0, width, height);
         table.set_col_width(1, 10);
         table.set_col_resize(false);
         table.set_row_height_all(ROW_HEIGHT);
+        table.make_resizable(true);
+        table.resize_callback(resize_table);
+        table.set_scrollbar_size(0);
         table.end();
 
         let data_c = data.clone();
@@ -380,7 +394,7 @@ impl StackOutput {
         });
 
         Self {
-            table,
+            table: Rc::from(RefCell::from(table)),
             radix,
             rational,
             data,
@@ -394,13 +408,14 @@ impl StackOutput {
             .last()
             .map(|x| x.lines() as i32)
             .unwrap_or(1);
-        let th = self.table.height();
+        let mut table = self.table.borrow_mut();
+        let th = table.height();
         let row_count = row_count(th, v);
-        self.table.set_rows(row_count);
+        table.set_rows(row_count);
         let h = v * ROW_HEIGHT;
-        self.table.set_row_height_all(ROW_HEIGHT);
-        self.table.set_row_height(row_count - 1, h);
-        self.table.redraw()
+        table.set_row_height_all(ROW_HEIGHT);
+        table.set_row_height(row_count - 1, h);
+        table.redraw()
     }
 
     fn draw_header(txt: &str, x: i32, y: i32, w: i32, h: i32) {
@@ -420,11 +435,11 @@ impl StackOutput {
     }
 
     pub fn get_selection(&self) -> Result<String, String> {
-        let (x1, _, _, _) = self.table.get_selection();
+        let (x1, _, _, _) = self.table.borrow().get_selection();
         if x1 < 0 {
             return Err("No Selection".to_string());
         }
-        let total_rows = self.table.rows();
+        let total_rows = self.table.borrow().rows();
         let len = self.data.borrow().len() as i32;
         let rn = len + x1 - total_rows;
         if rn < 0 {
@@ -472,7 +487,7 @@ impl StackOutput {
         *self.rational.borrow_mut() = rational;
     }
 
-    pub fn table(&self) -> &table::Table {
-        &self.table
+    pub fn table(&self) -> Rc<RefCell<table::Table>> {
+        self.table.clone()
     }
 }
