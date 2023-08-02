@@ -61,16 +61,16 @@ fn main() {
                 stacks.push_front(stacks[0].clone());
 
                 let rv = match value.as_str() {
-                    "quit" | "q" | "exit" => {
+                    "quit" | "q" | "exit" | "#quit" | "#exit" => {
                         ui.quit();
                         break;
                     }
-                    "help" | "?" => {
+                    "help" | "?" | "#help" => {
                         ui.help();
                         Return::Noop
                     }
                     // Stack Operations
-                    "undo" | "u" => {
+                    "undo" | "u" | "#undo" => {
                         if stacks.len() > 2 {
                             stacks.pop_front();
                             stacks.pop_front();
@@ -138,6 +138,17 @@ fn main() {
                     "#rational" | "#rat" | "#Q" => {
                         ui.set_display(None, Some(true));
                         need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#debug" => {
+                        if stacks[0].len() > 0 {
+                            ui.dialog(
+                                stacks[0]
+                                    .get(stacks[0].len() - 1)
+                                    .map(|x| format!("{x:?}"))
+                                    .unwrap_or_default(),
+                            );
+                        }
                         Return::Noop
                     }
                     // Arithmatic Operations

@@ -289,7 +289,7 @@ impl CalcDisplay for FltkCalcDisplay {
         self.help.show();
     }
 
-    fn dialog(&self, msg: String) {
+    fn dialog(&mut self, msg: String) {
         dialog::message_default(&msg);
     }
 

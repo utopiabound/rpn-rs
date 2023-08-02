@@ -56,7 +56,7 @@ pub trait CalcDisplay {
     fn set_error(&mut self, msg: Option<String>);
 
     /// Display Dialog with text
-    fn dialog(&self, mgs: String);
+    fn dialog(&mut self, mgs: String);
 
     fn set_data(&mut self, newdata: &[Value]);
 

@@ -85,7 +85,7 @@ impl CalcDisplay for ReadlineCalcUI {
     }
 
     /// Display Dialog with text
-    fn dialog(&self, msg: String) {
+    fn dialog(&mut self, msg: String) {
         println!("{msg}");
     }
 

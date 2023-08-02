@@ -276,8 +276,8 @@ impl CalcDisplay for TuiCalcUI {
     }
 
     /// Display Dialog with text
-    fn dialog(&self, msg: String) {
-        println!("{msg}");
+    fn dialog(&mut self, msg: String) {
+        self.set_error(Some(msg));
     }
 
     fn set_data(&mut self, newdata: &[Value]) {
