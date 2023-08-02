@@ -141,13 +141,8 @@ fn main() {
                         Return::Noop
                     }
                     "#debug" => {
-                        if stacks[0].len() > 0 {
-                            ui.dialog(
-                                stacks[0]
-                                    .get(stacks[0].len() - 1)
-                                    .map(|x| format!("{x:?}"))
-                                    .unwrap_or_default(),
-                            );
+                        if let Some(val) = stacks[0].last() {
+                            ui.dialog(format!("{val:?}"));
                         }
                         Return::Noop
                     }

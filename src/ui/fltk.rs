@@ -50,11 +50,6 @@ pub struct FltkCalcDisplay {
     clipboard: Box<dyn ClipboardProvider>,
 }
 
-fn resize_table(table: &mut table::Table, x: i32, y: i32, width: i32, height: i32) {
-    table.set_rows(row_count(height, 1));
-    table.set_col_width(0, width - 12 - (table.row_header_width() + 4));
-}
-
 impl CalcDisplay for FltkCalcDisplay {
     fn init() -> Result<Self, Box<dyn Error + Send + Sync>> {
         let app = app::App::default().with_scheme(app::Scheme::Gtk);
@@ -325,12 +320,21 @@ impl StackOutput {
         //table.set_row_resize(false);
         table.set_cols(2);
         table.set_col_header(false);
-        resize_table(&mut table, 0, 0, width, height);
         table.set_col_width(1, 10);
         table.set_col_resize(false);
         table.set_row_height_all(ROW_HEIGHT);
         table.make_resizable(true);
-        table.resize_callback(resize_table);
+        let d2 = data.clone();
+        table.resize_callback(move |s, _x, _y, width, height| {
+            let first = d2.borrow().last().map(|x| x.lines() as i32).unwrap_or(1);
+            let rc = row_count(height, first);
+            s.set_rows(rc);
+            let first_rh = first * ROW_HEIGHT;
+            s.set_row_height_all(ROW_HEIGHT);
+            s.set_row_height(rc - 1, first_rh);
+            s.set_col_width(0, width - 12 - (s.row_header_width() + 4));
+            s.redraw();
+        });
         table.set_scrollbar_size(0);
         table.end();
 
@@ -402,20 +406,10 @@ impl StackOutput {
     }
 
     pub fn redraw(&mut self) {
-        let v = self
-            .data
-            .borrow()
-            .last()
-            .map(|x| x.lines() as i32)
-            .unwrap_or(1);
-        let mut table = self.table.borrow_mut();
-        let th = table.height();
-        let row_count = row_count(th, v);
-        table.set_rows(row_count);
-        let h = v * ROW_HEIGHT;
-        table.set_row_height_all(ROW_HEIGHT);
-        table.set_row_height(row_count - 1, h);
-        table.redraw()
+        let w = self.table.borrow().width();
+        let h = self.table.borrow().height();
+        // cause table resize_callback to be called
+        self.table.borrow_mut().set_size(w, h);
     }
 
     fn draw_header(txt: &str, x: i32, y: i32, w: i32, h: i32) {
