@@ -47,7 +47,7 @@ impl StackOps for Vec<Value> {
             let a = self.pop().unwrap();
             let b = self.pop().unwrap();
             let res = f(b, a);
-            self.extend(res.into_iter());
+            self.extend(res);
 
             Return::Ok
         } else {
@@ -57,7 +57,7 @@ impl StackOps for Vec<Value> {
     fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return {
         if let Some(a) = self.pop() {
             let res = f(a);
-            self.extend(res.into_iter());
+            self.extend(res);
             Return::Ok
         } else {
             Return::Noop
@@ -80,7 +80,7 @@ impl StackOps for Vec<Value> {
         if let Some(a) = self.pop() {
             match f(a) {
                 Ok(c) => {
-                    self.extend(c.into_iter());
+                    self.extend(c);
                     Return::Ok
                 }
                 Err(e) => Return::Err(e),
