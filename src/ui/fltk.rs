@@ -15,10 +15,11 @@ use fltk::{
     app, dialog, draw,
     enums::{self, CallbackTrigger, Shortcut},
     group::Pack,
+    image::PngImage,
     input::Input,
     menu::{MenuFlag, SysMenuBar},
     output::Output,
-    prelude::{GroupExt, InputExt, MenuExt, TableExt, WidgetBase, WidgetExt},
+    prelude::{GroupExt, InputExt, MenuExt, TableExt, WidgetBase, WidgetExt, WindowExt},
     table,
     window::Window,
 };
@@ -49,6 +50,8 @@ pub struct FltkCalcDisplay {
     menu: SysMenuBar,
     clipboard: Box<dyn ClipboardProvider>,
 }
+
+const ICON: &[u8] = include_bytes!("../../desktop/rpn-rs.png");
 
 impl CalcDisplay for FltkCalcDisplay {
     fn init() -> Result<Self, Box<dyn Error + Send + Sync>> {
@@ -184,6 +187,7 @@ impl CalcDisplay for FltkCalcDisplay {
         wind.resizable(&pack);
         wind.end();
         wind.show();
+        wind.set_icon(PngImage::from_data(ICON).ok());
 
         input.set_trigger(CallbackTrigger::EnterKeyAlways);
         input.emit(tx, FltkMessage::Input);
