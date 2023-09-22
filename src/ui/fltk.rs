@@ -387,6 +387,8 @@ impl StackOutput {
             table::TableContext::Cell => {
                 let total_rows = t.rows();
                 let rn = (data_c.borrow().len() as i32) - total_rows + row;
+                draw::set_font(enums::Font::Screen, 18);
+                let digits = w as usize / draw::char_width('m') as usize;
                 let value = if col != 0 || rn < 0 {
                     "".to_string()
                 } else {
@@ -394,9 +396,24 @@ impl StackOutput {
                         *radix_c.borrow(),
                         *rational_c.borrow(),
                         row + 1 != total_rows,
+                        digits - 2,
                     )
                 };
-                Self::draw_data(&value, x, y, w, h, t.is_selected(row, col));
+                let selected = t.is_selected(row, col);
+                draw::push_clip(x, y, w, h);
+                if selected {
+                    draw::set_draw_color(enums::Color::Selection);
+                } else {
+                    draw::set_draw_color(enums::Color::BackGround);
+                }
+                draw::draw_rectf(x, y, w, h);
+                if selected {
+                    draw::set_draw_color(enums::Color::White);
+                } else {
+                    draw::set_draw_color(enums::Color::Gray0);
+                }
+                draw::draw_text2(&value, x, y, w, h, enums::Align::Right);
+                draw::pop_clip();
             }
             _ => (),
         });
@@ -447,28 +464,8 @@ impl StackOutput {
         self.data
             .borrow()
             .get(rn as usize)
-            .map(|v| v.to_string_radix(*self.radix.borrow(), *self.rational.borrow(), true))
+            .map(|v| v.to_string_radix(*self.radix.borrow(), *self.rational.borrow(), true, None))
             .ok_or_else(|| "No Selection".to_string())
-    }
-
-    // The selected flag sets the color of the cell to a grayish color, otherwise white
-    fn draw_data(txt: &str, x: i32, y: i32, w: i32, h: i32, selected: bool) {
-        draw::push_clip(x, y, w, h);
-        if selected {
-            draw::set_draw_color(enums::Color::Selection);
-        } else {
-            draw::set_draw_color(enums::Color::BackGround);
-        }
-        draw::draw_rectf(x, y, w, h);
-        if selected {
-            draw::set_draw_color(enums::Color::White);
-        } else {
-            draw::set_draw_color(enums::Color::Gray0);
-        }
-        draw::set_font(enums::Font::Screen, 18);
-        draw::draw_text2(txt, x, y, w, h, enums::Align::Right);
-        //draw::draw_rect(x, y, w, h);
-        draw::pop_clip();
     }
 
     pub fn set_data(&mut self, newdata: &[Value]) {

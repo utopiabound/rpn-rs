@@ -286,7 +286,14 @@ impl CalcDisplay for TuiCalcUI {
         self.info.stack = data
             .iter()
             .enumerate()
-            .map(|(i, v)| v.to_string_radix(self.info.radix, self.info.rational, i != 0))
+            .map(|(i, v)| {
+                v.to_string_radix(
+                    self.info.radix,
+                    self.info.rational,
+                    i != 0,
+                    self.terminal.size().ok().map(|x| (x.width - 8) as usize),
+                )
+            })
             .collect();
     }
 

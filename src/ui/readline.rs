@@ -94,7 +94,7 @@ impl CalcDisplay for ReadlineCalcUI {
         self.stack = newdata
             .iter()
             .enumerate()
-            .map(|(i, v)| v.to_string_radix(self.radix, self.rational, i != len - 1))
+            .map(|(i, v)| v.to_string_radix(self.radix, self.rational, i != len - 1, None))
             .collect();
     }
 

@@ -11,12 +11,12 @@ use rug::{
     ops::{DivAssignRound, DivFromRound, Pow, RemRounding},
     Complete, Complex, Float, Integer, Rational,
 };
-use std::{cmp::Ordering, ops};
+use std::{
+    cmp::{max, min, Ordering},
+    ops,
+};
 
 const FLOAT_PRECISION: u32 = 256;
-// This determines the number of digits that Floats are rounded to.
-// This allow decimal 0.1 to print as "0.1" instead of "0.10...02"
-const FLOAT_STRING_DIGITS: usize = 72;
 
 #[derive(Debug, Clone)]
 pub enum Scaler {
@@ -90,12 +90,21 @@ impl RpnMatrixExt for Matrix<Scaler> {
 }
 
 trait RpnToStringScaler {
-    fn to_string_scaler(&self, radix: Radix) -> String;
+    fn to_string_scaler(&self, radix: Radix) -> String {
+        self.to_string_scaler_len(radix, None)
+    }
+    fn digits(&self, radix: Radix) -> usize {
+        self.to_string_scaler_len(radix, None).len()
+    }
+    fn to_string_width(&self, radix: Radix, width: Option<usize>) -> String {
+        self.to_string_scaler_len(radix, width)
+    }
+    fn to_string_scaler_len(&self, radix: Radix, digits: Option<usize>) -> String;
 }
 
 impl RpnToStringScaler for Float {
-    fn to_string_scaler(&self, radix: Radix) -> String {
-        let (sign, s, exp) = self.to_sign_string_exp(radix.into(), Some(FLOAT_STRING_DIGITS));
+    fn to_string_scaler_len(&self, radix: Radix, digits: Option<usize>) -> String {
+        let (sign, s, exp) = self.to_sign_string_exp(radix.into(), digits);
         let len = s.len() as i32;
 
         let s = if let Some(exp) = exp {
@@ -117,10 +126,23 @@ impl RpnToStringScaler for Float {
         };
         format!("{}{}{s}", if sign { "-" } else { "" }, radix.prefix())
     }
+    fn digits(&self, radix: Radix) -> usize {
+        let (_sign, s, _exp) = self.to_sign_string_exp(radix.into(), None);
+        s.len() // @@ FIXME: large negative exp
+    }
+    fn to_string_width(&self, radix: Radix, width: Option<usize>) -> String {
+        let width = width.map(|w| {
+            let l = self.digits(radix);
+            let w = w - 1 - radix.prefix().len() - if self.is_sign_negative() { 1 } else { 0 };
+            eprintln!("{self} len:{l} digits:{w}/{width:?}");
+            min(w, l)
+        });
+        self.to_string_scaler_len(radix, width)
+    }
 }
 
 impl RpnToStringScaler for Rational {
-    fn to_string_scaler(&self, radix: Radix) -> String {
+    fn to_string_scaler_len(&self, radix: Radix, _digits: Option<usize>) -> String {
         let sign = match self.cmp0() {
             Ordering::Less => "-",
             Ordering::Equal => return "0".to_string(),
@@ -420,24 +442,42 @@ impl Scaler {
         }
     }
 
-    pub fn to_string_radix(&self, radix: Radix, rational: bool) -> String {
+    pub fn to_string_radix(&self, radix: Radix, rational: bool, width: Option<usize>) -> String {
+        //eprintln!("{self:?} digits:{digits:?}");
         match self {
             Scaler::Int(x) => {
                 if !rational && !x.is_integer() {
-                    let f: Float = x * Float::with_val(32, 1.0);
-                    f.to_string_scaler(radix)
+                    let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
+                    f.to_string_width(radix, width)
                 } else {
                     x.to_string_scaler(radix)
                 }
             }
-            Scaler::Float(x) => x.to_string_scaler(radix),
+            Scaler::Float(x) => x.to_string_width(radix, width),
             Scaler::Complex(x) => {
                 let r = x.real();
                 let i = x.imag();
+                let sign = if i.is_sign_positive() { "+" } else { "" };
                 if r.is_zero() {
-                    format!("{}i", i.to_string_scaler(radix))
+                    format!("{}i", i.to_string_width(radix, width.map(|x| x - 1)))
+                } else if let Some(width) = width {
+                    let rlen = r.to_string_scaler(radix).len();
+                    let ilen = i.to_string_scaler(radix).len();
+                    let digits = width - sign.len() - 1 - radix.prefix().len() * 2;
+                    let (rlen, ilen) = if digits > rlen + ilen {
+                        (rlen, ilen)
+                    } else {
+                        let t = rlen + ilen;
+                        //eprintln!("digits:{digits} t:{t} :: {r} ({rlen}) + {i} ({ilen}) i");
+                        (max(2, rlen * digits / t) - 1, max(2, ilen * digits / t) - 1)
+                    };
+                    format!(
+                        "{}{}{}i",
+                        r.to_string_scaler_len(radix, Some(rlen)),
+                        sign,
+                        i.to_string_scaler_len(radix, Some(ilen))
+                    )
                 } else {
-                    let sign = if i.is_sign_positive() { "+" } else { "" };
                     format!(
                         "{}{}{}i",
                         r.to_string_scaler(radix),
@@ -508,16 +548,24 @@ impl Value {
         self.try_root(2.into())
     }
 
-    pub fn to_string_radix(&self, radix: Radix, rational: bool, flat: bool) -> String {
+    pub fn to_string_radix(
+        &self,
+        radix: Radix,
+        rational: bool,
+        flat: bool,
+        digits: impl Into<Option<usize>>,
+    ) -> String {
+        let digits = digits.into();
         match self {
-            Value::Scaler(x) => x.to_string_radix(radix, rational),
+            Value::Scaler(x) => x.to_string_radix(radix, rational, digits),
             Value::Matrix(x) => {
                 let mut s = String::from("[");
                 let rowmax = x.rows();
+                // @@ FIXME: digits
                 for i in 0..rowmax {
                     for j in 0..x.cols() {
                         s += " ";
-                        s += x[i][j].to_string_radix(radix, rational).as_str();
+                        s += x[i][j].to_string_radix(radix, rational, digits).as_str();
                     }
                     s += if i == rowmax - 1 {
                         " ]"
@@ -1375,16 +1423,34 @@ mod test {
         let b = Scaler::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -21.0)));
         let c = Scaler::try_from("1/2").unwrap();
 
-        assert_eq!(a.to_string_radix(Radix::Decimal, true).as_str(), "10+20i");
-        assert_eq!(b.to_string_radix(Radix::Decimal, true).as_str(), "-21i");
-        assert_eq!(c.to_string_radix(Radix::Decimal, true).as_str(), "1/2");
-        assert_eq!(a.to_string_radix(Radix::Decimal, false).as_str(), "10+20i");
-        assert_eq!(b.to_string_radix(Radix::Decimal, false).as_str(), "-21i");
-        assert_eq!(c.to_string_radix(Radix::Decimal, false).as_str(), "0.5");
-        assert_eq!(a.to_string_radix(Radix::Hex, true).as_str(), "0xa+0x14i");
-        assert_eq!(b.to_string_radix(Radix::Hex, true).as_str(), "-0x15i");
-        assert_eq!(c.to_string_radix(Radix::Hex, true).as_str(), "0x1/0x2");
-        assert_eq!(c.to_string_radix(Radix::Hex, false).as_str(), "0x0.8");
+        assert_eq!(
+            a.to_string_radix(Radix::Decimal, true, 100).as_str(),
+            "10+20i"
+        );
+        assert_eq!(
+            b.to_string_radix(Radix::Decimal, true, 100).as_str(),
+            "-21i"
+        );
+        assert_eq!(c.to_string_radix(Radix::Decimal, true, 100).as_str(), "1/2");
+        assert_eq!(
+            a.to_string_radix(Radix::Decimal, false, 100).as_str(),
+            "10+20i"
+        );
+        assert_eq!(
+            b.to_string_radix(Radix::Decimal, false, 100).as_str(),
+            "-21i"
+        );
+        assert_eq!(
+            c.to_string_radix(Radix::Decimal, false, 100).as_str(),
+            "0.5"
+        );
+        assert_eq!(
+            a.to_string_radix(Radix::Hex, true, 100).as_str(),
+            "0xa+0x14i"
+        );
+        assert_eq!(b.to_string_radix(Radix::Hex, true, 100).as_str(), "-0x15i");
+        assert_eq!(c.to_string_radix(Radix::Hex, true, 100).as_str(), "0x1/0x2");
+        assert_eq!(c.to_string_radix(Radix::Hex, false, 100).as_str(), "0x0.8");
     }
 
     #[test]
