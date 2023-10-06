@@ -1141,7 +1141,9 @@ impl Pow<Scaler> for Scaler {
                         let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
                         Scaler::from(fa.pow(fb))
                     }
-                } else if b == (1, 2) {
+                } else if b == Rational::from((1, 2)) {
+                    Scaler::from(fa.sqrt())
+                } else if b == Rational::from((1, 3)) {
                     Scaler::from(fa.sqrt())
                 } else {
                     let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
