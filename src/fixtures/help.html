@@ -35,14 +35,14 @@
 
     <table>
       <tr><th align="left">Command</th><th align="left">Stack Consumed</th><th align="left">Description</th><th>Representation</th></tr>
-      <tr><td>quit | exit | q</td><td><i>N/A</i></td><td colspan=2>Quite application</td></tr>
-      <tr><td>help | ?</td><td><i>N/A</i></td><td colspan=2>Display Tdis Help</td></tr>
-      <tr><td>#bin</td><td><i>N/A</i></td><td colspan=2>Set display to Binary</td></tr>
-      <tr><td>#oct</td><td><i>N/A</i></td><td colspan=2>Set display to Octal</td></tr>
-      <tr><td>#dec</td><td><i>N/A</i></td><td colspan=2>Set display to Decimal</td></tr>
-      <tr><td>#hex</td><td><i>N/A</i></td><td colspan=2>Set display to Hexadecimal</td></tr>
-      <tr><td>#R | #real</td><td><i>N/A</i></td><td colspan=2>Set display to Real</td></tr>
-      <tr><td>#Q | #rat(ional)</td><td><i>N/A</i></td><td colspan=2>Set display to Rational</td></tr>
+      <tr><td>quit | exit | q</td><td><i>N/A</i></td><td colspan=2>Quit application</td></tr>
+      <tr><td>help | ?</td><td><i>N/A</i></td><td colspan=2>Display this help</td></tr>
+      <tr><td>#bin</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Binary_number">Binary</a></td></tr>
+      <tr><td>#oct</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Octal">Octal</a></td></tr>
+      <tr><td>#dec</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Decimal">Decimal</a></td></tr>
+      <tr><td>#hex</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Hexadecimal">Hexadecimal</a></td></tr>
+      <tr><td>#R | #real</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Real_number">Real</a></td></tr>
+      <tr><td>#Q | #rat(ional)</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Rational_number">Rational</a></td></tr>
       <tr><th colspan=4>Stack Operations</th></tr>
       <tr><td>clear</td><td><i>all</i></td><td colspan=2>clear stack and history</td></tr>
       <tr><td>drop | pop | del</td><td>1</td><td colspan=2>Remove first item on stack</td></tr>
@@ -69,21 +69,22 @@
       <tr><td>sqrt</td><td>1</td><td>Square root</td><td><i>./&macr;x</i></td></tr>
       <tr><td>trunc(ate)</td><td>1</td><td colspan=2>Truncate value to Integer</td></tr>
       <tr><th colspan=4>Scaler Operations</th></tr>
-      <tr><td>factor</td><td>1</td><td colspan=2>Find all prime factors of item</td></tr>
-      <tr><td>ln</td><td>1</td><td>Natural Log</td><td><i>ln(x)</i></td></tr>
-      <tr><td>log</td><td>1</td><td>Logarithm (base 10)</td><td><i>log10(x)</i></td></tr>
+      <tr><td>factor</td><td>1</td><td colspan=2>Find all <a href="https://en.wikipedia.org/wiki/Prime_number">prime</a> factors of item</td></tr>
+      <tr><td>ln</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Natural_logarithm">Natural logarithm</a></td><td><i>ln(x)</i></td></tr>
+      <tr><td>log</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Logarithm">Logarithm</a> (base 10)</td><td><i>log10(x)</i></td></tr>
       <tr><th colspan=4>Binary Operations</th></tr>
       <tr><td>&lt;&lt; | lshift</td><td>2</td><td>Bitwise left shift</td><td><i>x&laquo;y</i></td></tr>
       <tr><td>&gt;&gt; | rshift</td><td>2</td><td>Bitwise right shift</td><td><i>x&raquo;y</i></td></tr>
       <tr><td colspan=4 align="center"><b>Matrix Operations</b></td></tr>
-      <tr><td>det | determinant</td><td>1</td><td>Calculate Determinant</td><td><i>det(x)</i></td></tr>
-      <tr><td>rref</td><td>1</td><td colspan=2>Reduce Row Echelon Form</td></tr>
-      <tr><td>trans | transpose</td><td>1</td><td>Transpose</td><td><i>x^T</i></td></tr>
+      <tr><td>det | determinant</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Determinant">Determinant</a></td><td><i>det(x)</i></td></tr>
+      <tr><td>rref</td><td>1</td><td colspan=2><a href="https://en.wikipedia.org/wiki/Row_echelon_form#Reduced_row_echelon_form">Reduce Row Echelon Form</a></td></tr>
+      <tr><td>trans | transpose</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Transpose">Transpose</a></td><td><i>x^T</i></td></tr>
       <tr><th colspan=4>Constants</th></tr>
-      <tr><td>i</td><td>0</td><td>Square root of -1</td><td><i>i</i></td></tr>
-      <tr><td>e</td><td>0</td><td>Euler's Number</td><td><i>e</i></td></tr>
-      <tr><td>pi</td><td>0</td><td colspan=2>Ratio of circle circumference to diameter</td></tr>
-      <tr><td>I | ident(ity)</td><td>1</td><td>Matrix Identity NxN</td><td><i>I</i></td></tr>
+      <tr><td>i</td><td>0</td><td>Square root of -1</td><td><i>i</i> | <i>./&macr;-1</i></td></tr>
+      <tr><td>e</td><td>0</td><td><a href="https://en.wikipedia.org/wiki/E_(mathematical_constant)">Euler's Number</a></td><td><i>e</i></td></tr>
+      <tr><td>pi</td><td>0</td><td colspan=2>Ratio of circle circumference to diameter (<a href="https://en.wikipedia.org/wiki/Pi">pi</a>)</td></tr>
+      <tr><td>G | catalan</td><td>0</td><td><a href="https://en.wikipedia.org/wiki/Catalan's_constant">Catalan's Constant</a></td><td><i>G</i></td></tr>
+      <tr><td>I | ident(ity)</td><td>1</td><td>Matrix <a href="https://en.wikipedia.org/wiki/Identity_matrix">Identity</a> NxN</td><td><i>I</i></td></tr>
       <tr><td>J | ones</td><td>1</td><td>Matrix of Ones NxN</td><td><i>J</i></td></tr>
     </table>
 

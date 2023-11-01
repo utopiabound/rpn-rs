@@ -189,6 +189,10 @@ fn main() {
                         stacks[0].push(Value::pi());
                         Return::Ok
                     }
+                    "G" | "catalan" => {
+                        stacks[0].push(Value::catalan());
+                        Return::Ok
+                    }
                     v => {
                         let (v, op) = if v.ends_with(&['*', '/', '+', '-', '!', '%', '^'][..]) {
                             let (val, op) = v.split_at(v.len() - 1);

@@ -134,7 +134,6 @@ impl RpnToStringScaler for Float {
         let width = width.map(|w| {
             let l = self.digits(radix);
             let w = w - 1 - radix.prefix().len() - if self.is_sign_negative() { 1 } else { 0 };
-            eprintln!("{self} len:{l} digits:{w}/{width:?}");
             min(w, l)
         });
         self.to_string_scaler_len(radix, width)
@@ -785,6 +784,12 @@ impl Value {
     }
     pub fn pi() -> Self {
         Value::Scaler(Scaler::from(Float::with_val(FLOAT_PRECISION, Constant::Pi)))
+    }
+    pub fn catalan() -> Self {
+        Value::Scaler(Scaler::from(Float::with_val(
+            FLOAT_PRECISION,
+            Constant::Catalan,
+        )))
     }
 }
 
