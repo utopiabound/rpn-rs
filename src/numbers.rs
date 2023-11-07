@@ -433,6 +433,15 @@ impl Scaler {
         }
     }
 
+    /// Round to nearest Integer
+    pub fn round(&self) -> Result<Self, String> {
+        match self {
+            Scaler::Int(x) => Ok(x.clone().round().into()),
+            Scaler::Float(x) => Ok(x.clone().round().into()),
+            Scaler::Complex(_x) => Err("No Rounding of Complex Values".to_string()),
+        }
+    }
+
     /// Return the numberator (as usize) iff denominator is 1
     fn get_usize(self) -> Option<usize> {
         match self {
@@ -707,6 +716,22 @@ impl Value {
                 for i in 0..x.rows() {
                     for j in 0..x.cols() {
                         m[i][j] = x[i][j].trunc()?;
+                    }
+                }
+                Ok(m.into())
+            }
+        }
+    }
+
+    /// Round values to Integer
+    pub fn try_round(&self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(x.round()?.into()),
+            Value::Matrix(x) => {
+                let mut m = x.clone();
+                for i in 0..x.rows() {
+                    for j in 0..x.cols() {
+                        m[i][j] = x[i][j].round()?;
                     }
                 }
                 Ok(m.into())
@@ -1138,21 +1163,21 @@ impl Pow<Scaler> for Scaler {
     fn pow(self, other: Self) -> Self::Output {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => {
-                let fa = a.clone() * Complex::with_val(FLOAT_PRECISION, (1, 0));
+                let c1 = Complex::with_val(FLOAT_PRECISION, (1, 0));
+                let f1 = Float::with_val(FLOAT_PRECISION, 1);
                 if b.is_integer() {
                     if let Some(b) = b.numer().to_u32() {
                         Scaler::from(a.pow(b))
                     } else {
                         let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
-                        Scaler::from(fa.pow(fb))
+                        Scaler::from((c1 * a).pow(fb))
                     }
                 } else if b == Rational::from((1, 2)) {
-                    Scaler::from(fa.sqrt())
+                    Scaler::from((a * c1).sqrt())
                 } else if b == Rational::from((1, 3)) {
-                    Scaler::from(fa.sqrt())
+                    Scaler::from((a * f1).cbrt())
                 } else {
-                    let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
-                    Scaler::from(fa.pow(fb))
+                    Scaler::from((c1.clone() * a).pow(b * c1))
                 }
             }
             (Scaler::Int(a), Scaler::Float(b)) => {
@@ -1431,33 +1456,45 @@ mod test {
         let c = Scaler::try_from("1/2").unwrap();
 
         assert_eq!(
-            a.to_string_radix(Radix::Decimal, true, 100).as_str(),
+            a.to_string_radix(Radix::Decimal, true, Some(100)).as_str(),
             "10+20i"
         );
         assert_eq!(
-            b.to_string_radix(Radix::Decimal, true, 100).as_str(),
+            b.to_string_radix(Radix::Decimal, true, Some(100)).as_str(),
             "-21i"
         );
-        assert_eq!(c.to_string_radix(Radix::Decimal, true, 100).as_str(), "1/2");
         assert_eq!(
-            a.to_string_radix(Radix::Decimal, false, 100).as_str(),
+            c.to_string_radix(Radix::Decimal, true, Some(100)).as_str(),
+            "1/2"
+        );
+        assert_eq!(
+            a.to_string_radix(Radix::Decimal, false, Some(100)).as_str(),
             "10+20i"
         );
         assert_eq!(
-            b.to_string_radix(Radix::Decimal, false, 100).as_str(),
+            b.to_string_radix(Radix::Decimal, false, Some(100)).as_str(),
             "-21i"
         );
         assert_eq!(
-            c.to_string_radix(Radix::Decimal, false, 100).as_str(),
+            c.to_string_radix(Radix::Decimal, false, Some(100)).as_str(),
             "0.5"
         );
         assert_eq!(
-            a.to_string_radix(Radix::Hex, true, 100).as_str(),
+            a.to_string_radix(Radix::Hex, true, Some(100)).as_str(),
             "0xa+0x14i"
         );
-        assert_eq!(b.to_string_radix(Radix::Hex, true, 100).as_str(), "-0x15i");
-        assert_eq!(c.to_string_radix(Radix::Hex, true, 100).as_str(), "0x1/0x2");
-        assert_eq!(c.to_string_radix(Radix::Hex, false, 100).as_str(), "0x0.8");
+        assert_eq!(
+            b.to_string_radix(Radix::Hex, true, Some(100)).as_str(),
+            "-0x15i"
+        );
+        assert_eq!(
+            c.to_string_radix(Radix::Hex, true, Some(100)).as_str(),
+            "0x1/0x2"
+        );
+        assert_eq!(
+            c.to_string_radix(Radix::Hex, false, Some(100)).as_str(),
+            "0x0.8"
+        );
     }
 
     #[test]
