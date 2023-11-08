@@ -361,10 +361,7 @@ impl Scaler {
     /// Exponent (e^x)
     pub fn exp(self) -> Self {
         match self {
-            Scaler::Int(x) => {
-                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(f.exp())
-            }
+            Scaler::Int(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, x).exp()),
             Scaler::Float(x) => Scaler::from(x.exp()),
             Scaler::Complex(x) => Scaler::from(x.exp()),
         }
@@ -373,10 +370,7 @@ impl Scaler {
     /// Natural Logarithm
     pub fn ln(self) -> Self {
         match self {
-            Scaler::Int(x) => {
-                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(f.ln())
-            }
+            Scaler::Int(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, x).ln()),
             Scaler::Float(x) => Scaler::from(x.ln()),
             Scaler::Complex(x) => Scaler::from(x.ln()),
         }
@@ -385,10 +379,7 @@ impl Scaler {
     /// Logarithm (base 10)
     pub fn log10(self) -> Self {
         match self {
-            Scaler::Int(x) => {
-                let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(f.log10())
-            }
+            Scaler::Int(x) => Scaler::from(Float::with_val(FLOAT_PRECISION, x).log10()),
             Scaler::Float(x) => Scaler::from(x.log10()),
             Scaler::Complex(x) => Scaler::from(x.log10()),
         }
@@ -455,8 +446,7 @@ impl Scaler {
         match self {
             Scaler::Int(x) => {
                 if !rational && !x.is_integer() {
-                    let f: Float = x * Float::with_val(FLOAT_PRECISION, 1.0);
-                    f.to_string_width(radix, width)
+                    Float::with_val(FLOAT_PRECISION, x).to_string_width(radix, width)
                 } else {
                     x.to_string_scaler(radix)
                 }
@@ -1019,8 +1009,8 @@ impl ops::Div<Scaler> for Scaler {
             (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a / b),
             (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(a / b),
             (Scaler::Int(a), Scaler::Complex(b)) => {
-                let f: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(f / b)
+                let fa = Float::with_val(FLOAT_PRECISION, a);
+                Scaler::from(fa / b)
             }
 
             (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a / b),
@@ -1043,8 +1033,8 @@ impl ops::DivAssign<Scaler> for Scaler {
                 (Scaler::Int(a), Scaler::Int(b)) => Scaler::from(a / b),
                 (Scaler::Int(a), Scaler::Float(b)) => Scaler::from(a / b),
                 (Scaler::Int(a), Scaler::Complex(b)) => {
-                    let f: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                    Scaler::from(f / b)
+                    let fa = Float::with_val(FLOAT_PRECISION, a);
+                    Scaler::from(fa / b)
                 }
 
                 (Scaler::Float(a), Scaler::Int(b)) => Scaler::from(a / b),
@@ -1163,43 +1153,41 @@ impl Pow<Scaler> for Scaler {
     fn pow(self, other: Self) -> Self::Output {
         match (self, other) {
             (Scaler::Int(a), Scaler::Int(b)) => {
-                let c1 = Complex::with_val(FLOAT_PRECISION, (1, 0));
-                let f1 = Float::with_val(FLOAT_PRECISION, 1);
                 if b.is_integer() {
                     if let Some(b) = b.numer().to_u32() {
                         Scaler::from(a.pow(b))
                     } else {
-                        let fb = b * Complex::with_val(FLOAT_PRECISION, (1, 0));
-                        Scaler::from((c1 * a).pow(fb))
+                        Scaler::from(
+                            Complex::with_val(FLOAT_PRECISION, a)
+                                .pow(Complex::with_val(FLOAT_PRECISION, b)),
+                        )
                     }
                 } else if b == Rational::from((1, 2)) {
-                    Scaler::from((a * c1).sqrt())
+                    Scaler::from(Complex::with_val(FLOAT_PRECISION, a).sqrt())
                 } else if b == Rational::from((1, 3)) {
-                    Scaler::from((a * f1).cbrt())
+                    Scaler::from(Float::with_val(FLOAT_PRECISION, a).cbrt())
                 } else {
-                    Scaler::from((c1.clone() * a).pow(b * c1))
+                    Scaler::from(
+                        Complex::with_val(FLOAT_PRECISION, a)
+                            .pow(Complex::with_val(FLOAT_PRECISION, b)),
+                    )
                 }
             }
             (Scaler::Int(a), Scaler::Float(b)) => {
-                let fa = a * Complex::with_val(FLOAT_PRECISION, (1, 0));
-                let fb = Complex::from(b);
-                Scaler::from(fa.pow(fb))
+                Scaler::from(Complex::with_val(FLOAT_PRECISION, a).pow(Complex::from(b)))
             }
             (Scaler::Int(a), Scaler::Complex(b)) => {
-                let f = a * Complex::with_val(FLOAT_PRECISION, (1, 0));
-                Scaler::from(f.pow(b))
+                Scaler::from(Complex::with_val(FLOAT_PRECISION, a).pow(b))
             }
 
             (Scaler::Float(a), Scaler::Int(b)) => {
-                let f = b * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(Complex::from(a).pow(f))
+                Scaler::from(Complex::from(a).pow(Float::with_val(FLOAT_PRECISION, b)))
             }
             (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(Complex::from(a).pow(b)),
             (Scaler::Float(a), Scaler::Complex(b)) => Scaler::from(Complex::from(a).pow(b)),
 
             (Scaler::Complex(a), Scaler::Int(b)) => {
-                let f: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
-                Scaler::from(a.pow(f))
+                Scaler::from(a.pow(Float::with_val(FLOAT_PRECISION, b)))
             }
             (Scaler::Complex(a), Scaler::Float(b)) => Scaler::from(a.pow(b)),
             (Scaler::Complex(a), Scaler::Complex(b)) => Scaler::from(a.pow(b)),
@@ -1217,24 +1205,24 @@ impl ops::Rem for Scaler {
         } else {
             match (self, other) {
                 (Scaler::Int(a), Scaler::Int(b)) => {
-                    let af: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                    let bf: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
-                    Scaler::from(af % bf)
+                    let fa: Float = Float::with_val(FLOAT_PRECISION, a);
+                    let fb: Float = Float::with_val(FLOAT_PRECISION, b);
+                    Scaler::from(fa % fb)
                 }
                 (Scaler::Int(a), Scaler::Float(b)) => {
-                    let f: Float = a * Float::with_val(FLOAT_PRECISION, 1.0);
-                    Scaler::from(f % b)
+                    let fa: Float = Float::with_val(FLOAT_PRECISION, a);
+                    Scaler::from(fa % b)
                 }
                 (Scaler::Int(a), Scaler::Complex(b)) => {
-                    let af: Float = a.clone() * Float::with_val(FLOAT_PRECISION, 1.0);
+                    let fa = Float::with_val(FLOAT_PRECISION, &a);
                     let mut c = b.clone();
-                    c.div_from_round(af, (Round::Zero, Round::Zero));
+                    c.div_from_round(fa, (Round::Zero, Round::Zero));
                     Scaler::from(a - c * b)
                 }
 
                 (Scaler::Float(a), Scaler::Int(b)) => {
-                    let bf: Float = b * Float::with_val(FLOAT_PRECISION, 1.0);
-                    Scaler::from(a % bf)
+                    let fb = Float::with_val(FLOAT_PRECISION, b);
+                    Scaler::from(a % fb)
                 }
                 (Scaler::Float(a), Scaler::Float(b)) => Scaler::from(a % b),
                 (Scaler::Float(a), Scaler::Complex(b)) => {
