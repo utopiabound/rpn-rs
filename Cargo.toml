@@ -13,7 +13,7 @@ libmat = { git = "https://github.com/utopiabound/libmat", branch = "rref" }
 log = "0.4"
 num-traits = "0.2"
 regex = "1"
-rug = "1"
+rug = { version = "1", features = ["num-traits"] }
 strum_macros = { version = "0.24" }
 
 # GUI

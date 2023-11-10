@@ -89,6 +89,36 @@ impl RpnMatrixExt for Matrix<Scaler> {
     }
 }
 
+trait RpnIntegerExt {
+    fn factorial(&self) -> Result<Self, String>
+    where
+        Self: Sized + One,
+    {
+        self.partial_factorial(Self::one())
+    }
+    fn partial_factorial(&self, m: Self) -> Result<Self, String>
+    where
+        Self: Sized;
+}
+
+impl RpnIntegerExt for Integer {
+    fn partial_factorial(&self, m: Self) -> Result<Self, String> {
+        if self < &m {
+            Err("partial factorial m must be smaller than n".to_string())
+        } else if self.is_negative() {
+            Err("n must not be negative for n!".to_string())
+        } else {
+            let mut val = Integer::one();
+            let mut i = m;
+            while i <= *self {
+                val *= i.clone();
+                i += 1;
+            }
+            Ok(val)
+        }
+    }
+}
+
 trait RpnToStringScaler {
     fn to_string_scaler(&self, radix: Radix) -> String {
         self.to_string_scaler_len(radix, None)
@@ -385,6 +415,82 @@ impl Scaler {
         }
     }
 
+    /// Logarithm (base 2)
+    pub fn try_log2(self) -> Result<Self, String> {
+        match self {
+            Scaler::Int(x) => Ok(Scaler::from(Float::with_val(FLOAT_PRECISION, x).log2())),
+            Scaler::Float(x) => Ok(Scaler::from(x.log2())),
+            // mpc is missing a log2() function
+            Scaler::Complex(_) => Err("Log2() not available for Complex Numbers".to_string()),
+        }
+    }
+
+    /// Factorial (n!)
+    pub fn try_factorial(self) -> Result<Self, String> {
+        match self {
+            Scaler::Int(x) if x.is_integer() => x.numer().factorial().map(|x| x.into()),
+            _ => Err("n! only implemented for integers".to_string()),
+        }
+    }
+
+    /// Permutation (nPm)
+    /// P(n, m) = n! / (n - m)!
+    pub fn try_permute(self, r: Self) -> Result<Self, String> {
+        if self < r {
+            return Err("P(n, m) only valid for n < m".to_string());
+        }
+        match (self, r) {
+            (Scaler::Int(n), Scaler::Int(r))
+                if n.is_integer() && !n.is_negative() && r.is_integer() && !r.is_negative() =>
+            {
+                let n = n.numer();
+                let r = r.numer();
+
+                if n == r {
+                    n.factorial().map(|x| x.into())
+                } else {
+                    let mut val = Integer::one();
+                    let mut i = Integer::one() + n - r;
+                    while i <= *n {
+                        val *= i.clone();
+                        i += 1;
+                    }
+                    Ok(val.into())
+                }
+            }
+            _ => Err("n! only implemented for positive integers".to_string()),
+        }
+    }
+
+    /// Combination (nCm)
+    /// C(n, m) = n! / m!(n - m)!
+    pub fn try_choose(self, r: Self) -> Result<Self, String> {
+        if self < r {
+            return Err(format!("C(n, m) only valid for n < m"));
+        }
+        match (self, r) {
+            (Scaler::Int(n), Scaler::Int(r))
+                if n.is_integer() && !n.is_negative() && r.is_integer() && !r.is_negative() =>
+            {
+                let n = n.numer();
+                let r = r.numer();
+
+                if n == r || r.is_zero() {
+                    Ok(1.into())
+                } else {
+                    let mut val = Integer::one();
+                    let mut i = Integer::one() + n - r;
+                    while i <= *n {
+                        val *= i.clone();
+                        i += 1;
+                    }
+                    Ok(Scaler::from(val / r.factorial()?))
+                }
+            }
+            _ => Err("n! only implemented for natural numbers".to_string()),
+        }
+    }
+
     /// Factor Integer
     pub fn factor(self) -> Result<Vec<Self>, String> {
         match self {
@@ -490,21 +596,21 @@ impl Scaler {
 
 impl One for Scaler {
     fn one() -> Self {
-        Scaler::Int(Rational::from(1))
+        Scaler::Int(Rational::one())
     }
 }
 
 impl Zero for Scaler {
     fn zero() -> Self {
-        Scaler::Int(Rational::from(0))
+        Scaler::Int(Rational::zero())
     }
 
     /// True if value is Zero
     fn is_zero(&self) -> bool {
         match self {
-            Scaler::Int(x) => x.numer().to_u32() == Some(0),
+            Scaler::Int(x) => x.is_zero(),
             Scaler::Float(x) => x.is_zero(),
-            Scaler::Complex(x) => x.real().is_zero(),
+            Scaler::Complex(x) => x.is_zero(),
         }
     }
 }
@@ -596,17 +702,22 @@ impl Value {
 
     pub fn try_factorial(self) -> Result<Value, String> {
         match self {
-            Value::Scaler(Scaler::Int(x)) if x.is_integer() && x.clone().signum() >= 0 => {
-                let max = x.numer();
-                let mut n = Integer::from(1);
-                let mut i = Integer::from(2);
-                while i <= *max {
-                    n *= i.clone();
-                    i += 1;
-                }
-                Ok(n.into())
-            }
+            Value::Scaler(x) => Ok(x.try_factorial()?.into()),
             _ => Err(format!("{self:?}! is not INT!")),
+        }
+    }
+
+    pub fn try_permute(self, r: Self) -> Result<Value, String> {
+        match (self, r) {
+            (Value::Scaler(x), Value::Scaler(r)) => Ok(x.try_permute(r)?.into()),
+            _ => Err(format!("Permuation only implement for INT P INT")),
+        }
+    }
+
+    pub fn try_choose(self, r: Self) -> Result<Value, String> {
+        match (self, r) {
+            (Value::Scaler(x), Value::Scaler(r)) => Ok(x.try_choose(r)?.into()),
+            _ => Err(format!("Combination only implement for INT C INT")),
         }
     }
 
@@ -664,6 +775,13 @@ impl Value {
     pub fn try_log10(self) -> Result<Self, String> {
         match self {
             Value::Scaler(x) => Ok(Value::Scaler(x.log10())),
+            Value::Matrix(_) => Err("NYI".to_string()),
+        }
+    }
+
+    pub fn try_log2(self) -> Result<Self, String> {
+        match self {
+            Value::Scaler(x) => Ok(Value::Scaler(x.try_log2()?)),
             Value::Matrix(_) => Err("NYI".to_string()),
         }
     }
@@ -1428,9 +1546,9 @@ mod test {
     fn scaler_from_str_rational() {
         let a = Scaler::from(rug::Rational::from((1, 2)));
 
-        assert_eq!(Scaler::try_from("0"), Ok(Scaler::from(0)));
+        assert_eq!(Scaler::try_from("0"), Ok(Scaler::zero()));
         assert_eq!(Scaler::try_from("-1"), Ok(Scaler::from(-1)));
-        assert_eq!(Scaler::try_from("+1"), Ok(Scaler::from(1)));
+        assert_eq!(Scaler::try_from("+1"), Ok(Scaler::one()));
         assert_eq!(Scaler::try_from("1/2"), Ok(a.clone()));
         assert_eq!(Scaler::try_from("0x1/0x2"), Ok(a.clone()));
         assert_eq!(Scaler::try_from("0b1/2"), Ok(a.clone()));
