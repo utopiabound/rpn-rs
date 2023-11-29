@@ -466,7 +466,7 @@ impl Scaler {
     /// C(n, m) = n! / m!(n - m)!
     pub fn try_choose(self, r: Self) -> Result<Self, String> {
         if self < r {
-            return Err(format!("C(n, m) only valid for n < m"));
+            return Err("C(n, m) only valid for n < m".to_string());
         }
         match (self, r) {
             (Scaler::Int(n), Scaler::Int(r))
@@ -710,14 +710,14 @@ impl Value {
     pub fn try_permute(self, r: Self) -> Result<Value, String> {
         match (self, r) {
             (Value::Scaler(x), Value::Scaler(r)) => Ok(x.try_permute(r)?.into()),
-            _ => Err(format!("Permuation only implement for INT P INT")),
+            _ => Err("Permuation only implement for INT P INT".to_string()),
         }
     }
 
     pub fn try_choose(self, r: Self) -> Result<Value, String> {
         match (self, r) {
             (Value::Scaler(x), Value::Scaler(r)) => Ok(x.try_choose(r)?.into()),
-            _ => Err(format!("Combination only implement for INT C INT")),
+            _ => Err("Combination only implement for INT C INT".to_string()),
         }
     }
 
@@ -805,7 +805,7 @@ impl Value {
                         m.cols()
                     ))
                 } else {
-                    Ok(((m[0].get(0).cloned().unwrap_or_default()
+                    Ok(((m[0].first().cloned().unwrap_or_default()
                         + m[0].get(1).cloned().unwrap_or_default() / Scaler::from(60)
                         + m[0].get(2).cloned().unwrap_or_default() / Scaler::from(3600))
                         % Scaler::from(360))
@@ -1455,7 +1455,7 @@ impl std::iter::Sum for Scaler {
     {
         let mut a = Scaler::zero();
 
-        for (_, b) in iter.enumerate() {
+        for b in iter {
             a += b;
         }
         a

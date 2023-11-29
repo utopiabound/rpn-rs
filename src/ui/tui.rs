@@ -80,7 +80,7 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
         .margin(0)
         .split(f.size());
     let height =
-        chunks[0].height as usize - info.stack.get(0).map(|x| x.lines().count()).unwrap_or(1);
+        chunks[0].height as usize - info.stack.first().map(|x| x.lines().count()).unwrap_or(1);
 
     let mut rows = (0..)
         .take(height)
