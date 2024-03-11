@@ -2,8 +2,7 @@ prefix=${HOME}/.local
 BINDIR=${HOME}/bin
 ICONDIR=${prefix}/share/icons/hicolor/16x16/apps/
 
-
-all: target/release/rpn-rs
+all: target/release/rpn-rs desktop/rpn-rs.icns
 
 install: target/release/rpn-rs
 	install -m 0755 $< ${BINDIR}/
@@ -17,6 +16,18 @@ install: target/release/rpn-rs
 target/release/rpn-rs: src/*.rs src/fixtures/help.html Cargo.*
 	cargo build --release
 
+%.icns: %.png
+	png2icns $@ $<
+
+rpn-rs.app: all
+	mkdir -p rpn-rs.app/Contents/Resources/
+	mkdir rpn-rs.app/Contents/MacOS/
+	cp desktop/rpn-rs.icns rpn-rs.app/Contents/Resources/
+	cp desktop/Info.plist rpn-rs.app/Contents/
+	cp target/release/rpn-rs rpn-rs.app/Contents/MacOS/
+
+clean:
+	rm -rf rpn-rs.app/
 
 test:
 	cargo clippy --all
