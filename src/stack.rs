@@ -12,9 +12,9 @@ pub enum Return {
 }
 
 pub trait StackOps {
-    fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
+    //fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
     fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
-    fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
+    //fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     fn try_unary_v<F: Fn(Value) -> Result<Vec<Value>, String>>(&mut self, f: F) -> Return;
     fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return;
@@ -22,26 +22,26 @@ pub trait StackOps {
 }
 
 impl StackOps for Vec<Value> {
-    fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return {
-        if let Some(a) = self.pop() {
-            let c = f(a);
-            self.push(c);
-            Return::Ok
-        } else {
-            Return::Noop
-        }
-    }
-    fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return {
-        if self.len() > 1 {
-            let a = self.pop().unwrap();
-            let b = self.pop().unwrap();
-            let c = f(b, a);
-            self.push(c);
-            Return::Ok
-        } else {
-            Return::Noop
-        }
-    }
+    // fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return {
+    //     if let Some(a) = self.pop() {
+    //         let c = f(a);
+    //         self.push(c);
+    //         Return::Ok
+    //     } else {
+    //         Return::Noop
+    //     }
+    // }
+    // fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return {
+    //     if self.len() > 1 {
+    //         let a = self.pop().unwrap();
+    //         let b = self.pop().unwrap();
+    //         let c = f(b, a);
+    //         self.push(c);
+    //         Return::Ok
+    //     } else {
+    //         Return::Noop
+    //     }
+    // }
     fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return {
         if self.len() > 1 {
             let a = self.pop().unwrap();

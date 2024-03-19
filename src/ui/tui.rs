@@ -74,7 +74,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
+fn ui(info: &mut CalcInfo, f: &mut Frame) {
     let chunks = Layout::default()
         .constraints([Constraint::Min(1), Constraint::Length(1)].as_ref())
         .margin(0)
@@ -102,12 +102,11 @@ fn ui(info: &mut CalcInfo, f: &mut Frame<CrosstermBackend<Stdout>>) {
         Constraint::Length(6),
         Constraint::Length(f.size().width - 7),
     ];
-    let t = Table::new(rows)
+    let t = Table::new(rows, widths)
         .block(Block::default().borders(Borders::NONE).title(Span::styled(
             info.error.clone().unwrap_or_default(),
             Style::default().fg(Color::Red),
         )))
-        .widths(&widths)
         .column_spacing(1);
     f.render_stateful_widget(t, chunks[0], &mut info.state);
     let input = Paragraph::new(info.input.as_str());

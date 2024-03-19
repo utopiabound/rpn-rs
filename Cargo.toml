@@ -21,14 +21,14 @@ strum_macros = { version = "0.24" }
 #fltk = "^1.3"
 # Use system libs for zlib, png and jpeg
 fltk = { version = "^1.4", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
-copypasta = "0.8"
+copypasta = "0.10"
 
 # CLI & TUI
-html2text = "0.6"
+html2text = "0.12"
 
 # CLI
-rustyline = "11"
+rustyline = "14"
 
 # (Rata)TUI
-crossterm = "0.26"
-ratatui = "0.21"
+crossterm = "0.27"
+ratatui = "0.26"
