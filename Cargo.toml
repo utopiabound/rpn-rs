@@ -14,11 +14,11 @@ log = "0.4"
 num-traits = "0.2"
 regex = "1"
 rug = { version = "1", features = ["num-traits"] }
-strum_macros = { version = "0.24" }
+strum_macros = "0.26"
 
 # GUI
 # Use this line to just build with fltk statically
-#fltk = "^1.3"
+#fltk = "^1.4"
 # Use system libs for zlib, png and jpeg
 fltk = { version = "^1.4", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
 copypasta = "0.10"
