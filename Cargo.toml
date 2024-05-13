@@ -21,7 +21,8 @@ strum_macros = "0.26"
 #fltk = "^1.4"
 # Use system libs for zlib, png and jpeg
 fltk = { version = "^1.4", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
-copypasta = "0.10"
+# Disable wayland as it fails codecov checks
+copypasta = { version = "0.10", default_features = false, features = [ "x11" ] }
 
 # CLI & TUI
 html2text = "0.12"
