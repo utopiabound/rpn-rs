@@ -1,0 +1,4 @@
+[hunspell]
+extra_dictionaries = ["rpn.dic"]
+lang = "en_US"
+search_dirs = ["."]

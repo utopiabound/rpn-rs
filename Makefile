@@ -30,5 +30,7 @@ clean:
 	rm -rf rpn-rs.app/
 
 test:
-	cargo clippy --all
-	cargo test
+	cargo fmt --check
+	cargo clippy --locked --all
+	cargo test --locked
+	cargo spellcheck

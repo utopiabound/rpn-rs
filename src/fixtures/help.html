@@ -2,11 +2,11 @@
 <!-- HTML 2.0 https://www.w3.org/MarkUp/1995-archive/html-spec.html + Tables -->
 <html>
   <head>
-    <title>RPN-rs Graphical Reverse Polish Notation Caluclator</title>
+    <title>RPN-rs Graphical Reverse Polish Notation Calculator</title>
   </head>
   <body>
     <h1>RPN-rs is a graphical reverse polish notation (RPN) calculator</h1>
-    <p>RPN-rs works with arbitrary presision rational numbers, large precision
+    <p>RPN-rs works with arbitrary precision rational numbers, large precision
       floating point numbers, complex numbers, and matrices (in progress).
       Numbers can be displayed in 4 different radix modes (base 2, 8, 10, 16).
       <!-- Complex numbers can be displayed in either Cartesian or polar
@@ -50,7 +50,7 @@
       <tr><td>rollu(p) | ru(p) | roll</td><td>0</td><td colspan=2>Pop 1 item, and move it to end of stack</td></tr>
       <tr><td>rolld(own) | rd(own)</td><td>0</td><td colspan=2>Opposite of rollup</td></tr>
       <tr><td>swap | sw</td><td>0</td><td colspan=2>Swap first two items on stack</td></tr>
-      <tr><td>undo | u</td><td><i>N/A</i></td><td colspan=2>Undo last operation (otder tdan clear)</td></tr>
+      <tr><td>undo | u</td><td><i>N/A</i></td><td colspan=2>Undo last operation (other than clear)</td></tr>
       <tr><th colspan=4>Arithmetic Operations</th></tr>
       <tr><td colspan=4 align="center">results of operations are pushed to stack</td></tr>
       <tr><td>+</td><td>2</td><td>Add first two items</td><td><i>x+y</i></td></tr>
@@ -69,7 +69,7 @@
       <tr><td>sqrt</td><td>1</td><td>Square root</td><td><i>./&macr;x</i></td></tr>
       <tr><td>trunc(ate)</td><td>1</td><td colspan=2>Truncate value to Integer</td></tr>
       <tr><td>round | rnd</td><td>1</td><td colspan=2>Round value to Integer (a half, rounds away from zero)</td></tr>
-      <tr><th colspan=4>Scaler Operations</th></tr>
+      <tr><th colspan=4>Scalar Operations</th></tr>
       <tr><td>factor</td><td>1</td><td colspan=2>Find all <a href="https://en.wikipedia.org/wiki/Prime_number">prime</a> factors of item</td></tr>
       <tr><td>ln</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Natural_logarithm">Natural logarithm</a></td><td><i>ln(x)</i></td></tr>
       <tr><td>log | log10</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Logarithm">Logarithm</a> (base 10)</td><td><i>log10(x)</i></td></tr>
@@ -92,6 +92,6 @@
       <tr><td>J | ones</td><td>1</td><td>Matrix of Ones NxN</td><td><i>J</i></td></tr>
     </table>
 
-    <p>Command abreviations "ident(ity)" can be enter as either "ident" or "identity".</p>
+    <p>Command abbreviations "ident(ity)" can be enter as either "ident" or "identity".</p>
   </body>
 </html>

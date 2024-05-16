@@ -46,7 +46,7 @@ pub struct TuiCalcUI {
     terminal: Terminal<CrosstermBackend<Stdout>>,
 }
 
-/// helper function to create a centered rect using up certain percentage of the available rect `r`
+/// helper function to create a centered rectangle using up certain percentage of the available rectangle `r`
 // From tui-rs/examples/popup.rs
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()

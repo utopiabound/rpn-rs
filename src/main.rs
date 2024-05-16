@@ -21,7 +21,7 @@ use std::collections::VecDeque;
 /// RPN Calculator
 struct App {
     #[clap(short, long, default_value_t)]
-    /// Type of UI to display
+    /// Type of `UI` to display
     flavor: Flavor,
 }
 
