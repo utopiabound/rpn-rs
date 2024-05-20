@@ -1471,6 +1471,7 @@ impl Default for Scalar {
 #[cfg(test)]
 mod test {
     use super::*;
+    use libmat::mat::Matrix;
     use num_traits::{One, Zero};
 
     #[test]
@@ -1488,15 +1489,23 @@ mod test {
 
     #[test]
     fn scalar_zero_equality() {
-        let a = Scalar::zero();
-        let b = Scalar::Float(Float::with_val(FLOAT_PRECISION, 0.0));
-        let c = Scalar::Complex(Complex::with_val(FLOAT_PRECISION, (0.0, 0.0)));
+        let a: Value = Scalar::zero().into();
+        let b: Value = Float::with_val(FLOAT_PRECISION, 0.0).into();
+        let c: Value = Complex::with_val(FLOAT_PRECISION, (0.0, 0.0)).into();
+        let d: Value = Integer::from(0).into();
+        let m: Value = Matrix::<Scalar>::zero(3, 3).unwrap().into();
 
         assert_eq!(a, b);
         assert_eq!(a, c);
+        assert_eq!(a, d);
         assert_eq!(b, c);
+        assert_eq!(b, d);
+        assert_eq!(c, d);
+        assert!(a.is_zero());
         assert!(b.is_zero());
         assert!(c.is_zero());
+        assert!(d.is_zero());
+        assert!(m.is_zero());
     }
 
     #[test]
@@ -1504,8 +1513,19 @@ mod test {
         let a = Scalar::from(12);
         let f2 = Scalar::from(2);
         let f3 = Scalar::from(3);
+        let one = Scalar::from(1);
 
         assert_eq!(a.factor(), Ok(vec![f2.clone(), f2, f3]));
+        assert_eq!(one.clone().factor(), Ok(vec![one]));
+    }
+
+    #[test]
+    fn scalar_trunc() {
+        let a: Scalar = rug::Float::with_val(FLOAT_PRECISION, 1.5).into();
+        let b: Scalar = rug::Float::with_val(FLOAT_PRECISION, -1.5).into();
+
+        assert_eq!(a.trunc(), Ok(Scalar::one()));
+        assert_eq!(b.trunc(), Ok(-Scalar::one()));
     }
 
     #[test]
@@ -1639,6 +1659,7 @@ mod test {
     fn string_scalar_rational() {
         let a = rug::Rational::from((-10, 1));
         let b = rug::Rational::from((10, 11));
+        let z = rug::Rational::from((0, 1));
         assert_eq!(a.to_string_scalar(Radix::Decimal), "-10");
         assert_eq!(a.to_string_scalar(Radix::Hex), "-0xa");
         assert_eq!(a.to_string_scalar(Radix::Octal), "-0o12");
@@ -1647,5 +1668,26 @@ mod test {
         assert_eq!(b.to_string_scalar(Radix::Hex), "0xa/0xb");
         assert_eq!(b.to_string_scalar(Radix::Octal), "0o12/0o13");
         assert_eq!(b.to_string_scalar(Radix::Binary), "0b1010/0b1011");
+        assert_eq!(z.to_string_scalar(Radix::Decimal), "0");
+        assert_eq!(z.to_string_scalar(Radix::Hex), "0");
+        assert_eq!(z.to_string_scalar(Radix::Octal), "0");
+        assert_eq!(z.to_string_scalar(Radix::Binary), "0");
+    }
+
+    #[test]
+    fn matrix_is_diag() {
+        let a: Matrix<Scalar> = Matrix::from_vec(
+            3,
+            3,
+            [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                .into_iter()
+                .map(Scalar::from)
+                .collect(),
+        )
+        .unwrap();
+        let id3: Matrix<Scalar> = Matrix::one(3).unwrap();
+
+        assert!(id3.is_diagonal());
+        assert!(!a.is_diagonal());
     }
 }

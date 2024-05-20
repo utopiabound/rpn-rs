@@ -4,6 +4,9 @@ RPN-rs is an RPN calculator written in rust using `FLTK`.
 
 Also can be run as command line or as a graphical text user interface.
 
+[![Code Coverage](https://codecov.io/gh/utopiabound/rpn-rs/graph/badge.svg?token=4HQJXC0TNK)](https://codecov.io/gh/utopiabound/rpn-rs)
+![Build Status](https://github.com/utopiabound/rpn-rs/workflows/RPN%20Push/badge.svg)
+
 ## Features
 
 * Number - Scalar (via [`rug`](latest/rug/struct.Integer.html) crate)
