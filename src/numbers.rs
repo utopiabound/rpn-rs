@@ -1690,4 +1690,33 @@ mod test {
         assert!(id3.is_diagonal());
         assert!(!a.is_diagonal());
     }
+
+    #[test]
+    fn matrix_plus_one() {
+        let a: Value = Matrix::from_vec(
+            3,
+            3,
+            [1, 2, 3, 1, 2, 3, 1, 2, 3]
+                .into_iter()
+                .map(Scalar::from)
+                .collect(),
+        )
+        .unwrap()
+        .into();
+        let b: Value = Matrix::from_vec(
+            3,
+            3,
+            [2, 4, 6, 2, 4, 6, 2, 4, 6]
+                .into_iter()
+                .map(Scalar::from)
+                .collect(),
+        )
+        .unwrap()
+        .into();
+        let one: Value = 1.into();
+        let two: Value = 2.into();
+
+        assert_eq!(one * a.clone(), Ok(a.clone()));
+        assert_eq!(a * two, Ok(b));
+    }
 }
