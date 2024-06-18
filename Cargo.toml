@@ -1,10 +1,12 @@
 [package]
 name = "rpn-rs"
 version = "0.1.5"
-authors = ["Nathaniel Clark <Nathaniel.Clark@misrule.us>"]
+authors = ["Nathaniel Clark"]
 edition = "2021"
 keywords = [ "fltk", "rpn", "calculator", "tui" ]
 categories = [ "gui", "mathematics", "command-line-utilities" ]
+license = "GPL-2.0-only"
+readme = "README.md"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "wrap_help"] }

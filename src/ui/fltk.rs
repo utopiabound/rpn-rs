@@ -1,4 +1,4 @@
-/* RPN-rs (c) 2023 Nathaniel Clark
+/* RPN-rs (c) 2024 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
@@ -8,7 +8,7 @@
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{CalcDisplay, Message, HELP_HTML},
+    ui::{about_txt, CalcDisplay, Message, HELP_HTML},
 };
 use copypasta::{ClipboardContext, ClipboardProvider};
 use fltk::{
@@ -234,10 +234,7 @@ impl CalcDisplay for FltkCalcDisplay {
                     self.table.set_rational(item.value());
                     self.table.redraw();
                 }
-                FltkMessage::About => self.dialog(format!(
-                    "RPN Calculator {} (c) 2023",
-                    env!("CARGO_PKG_VERSION")
-                )),
+                FltkMessage::About => self.about(),
                 FltkMessage::Copy => {
                     if let Err(e) = self
                         .table
@@ -282,6 +279,10 @@ impl CalcDisplay for FltkCalcDisplay {
 
     fn set_error(&mut self, err: Option<String>) {
         self.error.set_value(err.unwrap_or_default().as_str());
+    }
+
+    fn about(&mut self) {
+        self.dialog(about_txt());
     }
 
     fn help(&mut self) {

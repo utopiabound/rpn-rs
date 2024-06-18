@@ -1,4 +1,4 @@
-/* RPN-rs (c) 2023 Nathaniel Clark
+/* RPN-rs (c) 2024 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
@@ -1692,7 +1692,25 @@ mod test {
     }
 
     #[test]
-    fn matrix_plus_one() {
+    fn value_lines() {
+        let a: Value = Matrix::from_vec(
+            3,
+            3,
+            [1, 2, 3, 4, 5, 6, 7, 8, 9]
+                .into_iter()
+                .map(Scalar::from)
+                .collect(),
+        )
+        .unwrap()
+        .into();
+        let one: Value = 1.into();
+
+        assert_eq!(a.lines(), 3);
+        assert_eq!(one.lines(), 1);
+    }
+
+    #[test]
+    fn value_matrix_scaler_multiplication() {
         let a: Value = Matrix::from_vec(
             3,
             3,

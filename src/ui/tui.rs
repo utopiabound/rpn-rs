@@ -1,11 +1,11 @@
-/* RPN-rs (c) 2023 Nathaniel Clark
+/* RPN-rs (c) 2024 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{help_text, CalcDisplay, Message},
+    ui::{about_txt, help_text, CalcDisplay, Message},
 };
 
 use crossterm::{
@@ -303,6 +303,10 @@ impl CalcDisplay for TuiCalcUI {
         if let Some(rational) = rational {
             self.info.rational = rational;
         }
+    }
+
+    fn about(&mut self) {
+        self.info.error = Some(about_txt());
     }
 
     /// Show Help Text

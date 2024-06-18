@@ -1,11 +1,11 @@
-/* RPN-rs (c) 2023 Nathaniel Clark
+/* RPN-rs (c) 2024 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{help_text, CalcDisplay, Message},
+    ui::{about_txt, help_text, CalcDisplay, Message},
 };
 
 use rustyline::{error::ReadlineError, DefaultEditor};
@@ -110,6 +110,10 @@ impl CalcDisplay for ReadlineCalcUI {
     /// Show Help Text
     fn help(&mut self) {
         println!("{}", help_text(80));
+    }
+
+    fn about(&mut self) {
+        println!("{}", about_txt());
     }
 
     /// Cleanup and quit

@@ -1,4 +1,4 @@
-/* RPN-rs (c) 2023 Nathaniel Clark
+/* RPN-rs (c) 2024 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
@@ -11,6 +11,14 @@ pub mod readline;
 pub mod tui;
 
 pub(crate) const HELP_HTML: &str = include_str!("fixtures/help.html");
+
+pub(crate) fn about_txt() -> String {
+    format!(
+        "RPN Calculator {} (c) 2024 {}",
+        env!("CARGO_PKG_VERSION"),
+        env!("CARGO_PKG_AUTHORS")
+    )
+}
 
 #[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum_macros::Display, PartialEq)]
 #[clap(rename_all = "lower")]
@@ -64,6 +72,9 @@ pub trait CalcDisplay {
 
     /// Show Help Text
     fn help(&mut self);
+
+    /// Show About Text
+    fn about(&mut self);
 
     /// Cleanup and quit
     fn quit(&mut self);
