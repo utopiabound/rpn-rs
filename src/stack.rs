@@ -19,6 +19,7 @@ pub trait StackOps {
     fn try_unary_v<F: Fn(Value) -> Result<Vec<Value>, String>>(&mut self, f: F) -> Return;
     fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return;
     fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return;
+    fn try_reduce<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
 }
 
 impl StackOps for Vec<Value> {
@@ -100,6 +101,21 @@ impl StackOps for Vec<Value> {
                 }
                 Err(e) => Return::Err(e),
             }
+        } else {
+            Return::Noop
+        }
+    }
+    // This is roughly Iterator::try_reduce() but needs to consume self
+    fn try_reduce<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return {
+        if let Some(mut acc) = self.pop() {
+            while let Some(e) = self.pop() {
+                match f(acc, e) {
+                    Ok(c) => acc = c,
+                    Err(e) => return Return::Err(e),
+                }
+            }
+            self.push(acc);
+            Return::Ok
         } else {
             Return::Noop
         }

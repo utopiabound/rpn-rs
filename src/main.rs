@@ -174,6 +174,7 @@ fn main() {
                     "round" | "rnd" => stacks[0].try_unary(|a| a.try_round()),
                     "trunc" | "truncate" => stacks[0].try_unary(|a| a.try_trunc()),
                     "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
+                    "sum" => stacks[0].try_reduce(|acc, e| acc + e),
                     // Matrix Operations
                     "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
                     "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
