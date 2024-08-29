@@ -547,6 +547,14 @@ impl Scalar {
         }
     }
 
+    /// Return the numerator iff denominator is 1
+    fn get_integer(&self) -> Option<Integer> {
+        match self {
+            Scalar::Int(x) => x.is_integer().then(|| x.numer().clone()),
+            _ => None,
+        }
+    }
+
     pub fn to_string_radix(&self, radix: Radix, rational: bool, width: Option<usize>) -> String {
         //eprintln!("{self:?} digits:{digits:?}");
         match self {
@@ -722,12 +730,20 @@ impl Value {
     }
 
     pub fn try_modulo(&self, b: &Value) -> Result<Value, String> {
-        if b.is_zero() {
-            Err("Division by zero".to_string())
-        } else if let (Some(a), Some(b)) = (self.get_integer(), b.get_integer()) {
-            Ok(Value::from(a.rem_euc(b)))
-        } else {
-            Err(format!("{self:?} mod {b:?} is not INT mod INT"))
+        match (self, b) {
+            (_, b) if b.is_zero() => Err("Modulo by zero".to_string()),
+            (_, Value::Matrix(_)) => Err("Modulo by Matrix".to_string()),
+            (_, Value::Scalar(b)) if b.is_negative() => Err("Modulo by negative".to_string()),
+            (Value::Matrix(_), Value::Scalar(_)) => Err("NYI: Modulo of Matrix".to_string()),
+            (Value::Scalar(a), Value::Scalar(b)) => {
+                if a.is_positive() {
+                    Ok(Value::from(a.clone() % b.clone()))
+                } else if let (Some(ai), Some(bi)) = (self.get_integer(), b.get_integer()) {
+                    Ok(Value::from(ai.rem_euc(bi)))
+                } else {
+                    Err("Modulo of non-integer".to_string())
+                }
+            }
         }
     }
 
@@ -1736,5 +1752,31 @@ mod test {
 
         assert_eq!(one * a.clone(), Ok(a.clone()));
         assert_eq!(a * two, Ok(b));
+    }
+
+    #[test]
+    fn value_modulo() {
+        let m: Value = Matrix::from_vec(
+            3,
+            3,
+            [1, 2, 3, 1, 2, 3, 1, 2, 3]
+                .into_iter()
+                .map(Scalar::from)
+                .collect(),
+        )
+        .unwrap()
+        .into();
+
+        let ap: Value = 30.into();
+        let bp: Value = 40.into();
+        let cp: Value = 10.into();
+        let an: Value = (-30).into();
+
+        assert!(m.try_modulo(&ap).is_err());
+        assert!(ap.try_modulo(&m).is_err());
+        assert!(ap.try_modulo(&an).is_err());
+        assert_eq!(ap.try_modulo(&bp), Ok(ap.clone()));
+        assert_eq!(bp.try_modulo(&ap), Ok(cp.clone()));
+        assert_eq!(an.try_modulo(&bp), Ok(cp));
     }
 }
