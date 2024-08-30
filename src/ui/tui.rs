@@ -15,9 +15,9 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::Span,
+    text::{Span, Text},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
     Frame, Terminal,
 };
@@ -26,7 +26,7 @@ use std::{error::Error, io::Stdout};
 #[derive(Debug, Clone, Default)]
 struct CalcInfo {
     retry: Option<String>,
-    stack: Vec<String>,
+    stack: Vec<Value>,
     error: Option<String>,
     input: String,
     radix: Radix,
@@ -79,8 +79,9 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
         .constraints([Constraint::Min(1), Constraint::Length(1)].as_ref())
         .margin(0)
         .split(f.size());
-    let height =
-        chunks[0].height as usize - info.stack.first().map(|x| x.lines().count()).unwrap_or(1);
+    let height = chunks[0].height as usize - info.stack.first().map(|x| x.lines()).unwrap_or(1);
+
+    let data_width = f.size().width - 7;
 
     let mut rows = (0..)
         .take(height)
@@ -88,20 +89,24 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
             let data = info
                 .stack
                 .get(x)
-                .cloned()
-                .unwrap_or_else(|| " ".to_string());
-            let lines = data.lines().count() as u16;
-            // TODO: Right align second cell [https://github.com/tui-rs-revival/ratatui/issues/257]
+                .map(|num| {
+                    Text::from(num.to_string_radix(
+                        info.radix,
+                        info.rational,
+                        x != 0,
+                        (data_width - 1) as usize,
+                    ))
+                    .alignment(Alignment::Right)
+                })
+                .unwrap_or_else(|| Text::from(" "));
+            let lines = data.lines.len() as u16;
             Row::new(vec![Cell::from(format!("{:4}:", x + 1)), Cell::from(data)]).height(lines)
         })
         .collect::<Vec<_>>();
 
     rows.reverse();
 
-    let widths = [
-        Constraint::Length(6),
-        Constraint::Length(f.size().width - 7),
-    ];
+    let widths = [Constraint::Length(6), Constraint::Length(data_width)];
     let t = Table::new(rows, widths)
         .block(Block::default().borders(Borders::NONE).title(Span::styled(
             info.error.clone().unwrap_or_default(),
@@ -242,6 +247,23 @@ impl CalcDisplay for TuiCalcUI {
                         }
                     } else {
                         match kcode {
+                            KeyCode::Char(c) if k.modifiers.contains(KeyModifiers::CONTROL) => {
+                                match c {
+                                    'l' => {
+                                        self.info.input = "".to_string();
+                                        return Some(Message::Clear);
+                                    }
+                                    'p' => return Some(Message::Drop),
+                                    'q' => return Some(Message::Input("quit".to_string())),
+                                    'd' => self.set_display(Some(Radix::Decimal), None),
+                                    'x' => self.set_display(Some(Radix::Hex), None),
+                                    'b' => self.set_display(Some(Radix::Binary), None),
+                                    'o' => self.set_display(Some(Radix::Octal), None),
+                                    'r' => self.set_display(None, Some(!self.info.rational)),
+                                    'h' => return Some(Message::Input("help".to_string())),
+                                    c => self.info.error = Some(format!("Unknown hotkey: ^{c}")),
+                                }
+                            }
                             KeyCode::Char(c) => self.info.input.push(c),
                             KeyCode::Enter => {
                                 let line = self.info.input.clone();
@@ -282,18 +304,7 @@ impl CalcDisplay for TuiCalcUI {
     fn set_data(&mut self, newdata: &[Value]) {
         let mut data = newdata.to_vec();
         data.reverse();
-        self.info.stack = data
-            .iter()
-            .enumerate()
-            .map(|(i, v)| {
-                v.to_string_radix(
-                    self.info.radix,
-                    self.info.rational,
-                    i != 0,
-                    self.terminal.size().ok().map(|x| (x.width - 8) as usize),
-                )
-            })
-            .collect();
+        self.info.stack = data.to_vec();
     }
 
     fn set_display(&mut self, radix: Option<Radix>, rational: Option<bool>) {
