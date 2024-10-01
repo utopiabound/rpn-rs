@@ -12,7 +12,7 @@ pub enum Return {
 }
 
 pub trait StackOps {
-    //fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
+    fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
     fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     //fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
@@ -20,18 +20,23 @@ pub trait StackOps {
     fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return;
     fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return;
     fn try_reduce<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
+    fn try_fold<F: Fn(Value, Value) -> Result<Value, String>>(
+        &mut self,
+        init: Value,
+        f: F,
+    ) -> Return;
 }
 
 impl StackOps for Vec<Value> {
-    // fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return {
-    //     if let Some(a) = self.pop() {
-    //         let c = f(a);
-    //         self.push(c);
-    //         Return::Ok
-    //     } else {
-    //         Return::Noop
-    //     }
-    // }
+    fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return {
+        if let Some(a) = self.pop() {
+            let c = f(a);
+            self.push(c);
+            Return::Ok
+        } else {
+            Return::Noop
+        }
+    }
     // fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return {
     //     if self.len() > 1 {
     //         let a = self.pop().unwrap();
@@ -107,17 +112,26 @@ impl StackOps for Vec<Value> {
     }
     // This is roughly Iterator::try_reduce() but needs to consume self
     fn try_reduce<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return {
-        if let Some(mut acc) = self.pop() {
-            while let Some(e) = self.pop() {
-                match f(acc, e) {
-                    Ok(c) => acc = c,
-                    Err(e) => return Return::Err(e),
-                }
-            }
-            self.push(acc);
-            Return::Ok
+        if let Some(acc) = self.pop() {
+            self.try_fold(acc, f)
         } else {
             Return::Noop
         }
+    }
+    // This is roughly Iterator::try_reduce() but needs to consume self
+    fn try_fold<F: Fn(Value, Value) -> Result<Value, String>>(
+        &mut self,
+        init: Value,
+        f: F,
+    ) -> Return {
+        let mut acc = init;
+        while let Some(e) = self.pop() {
+            match f(acc, e) {
+                Ok(c) => acc = c,
+                Err(e) => return Return::Err(e),
+            }
+        }
+        self.push(acc);
+        Return::Ok
     }
 }

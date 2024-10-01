@@ -20,7 +20,7 @@ use std::collections::VecDeque;
 #[derive(Parser, Debug)]
 /// RPN Calculator
 struct App {
-    #[clap(short, long, default_value_t)]
+    #[clap(short, long, short_alias = 'u', default_value_t)]
     /// Type of `UI` to display
     flavor: Flavor,
 }
@@ -88,7 +88,7 @@ fn main() {
                         stacks.push_front(vec![]);
                         Return::Ok
                     }
-                    "drop" | "pop" | "del" | "delete" => {
+                    "drop" | "del" | "delete" => {
                         if stacks[0].pop().is_some() {
                             Return::Ok
                         } else {
@@ -173,8 +173,21 @@ fn main() {
                     "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
                     "round" | "rnd" => stacks[0].try_unary(|a| a.try_round()),
                     "trunc" | "truncate" => stacks[0].try_unary(|a| a.try_trunc()),
-                    "factor" => stacks[0].try_unary_v(|a| a.try_factor()),
-                    "sum" => stacks[0].try_reduce(|acc, e| acc + e),
+                    "factor" => stacks[0].try_unary(|a| a.try_factor()),
+                    // Tuple Operations
+                    "collect" => stacks[0].try_reduce(|acc, e| acc.try_push(e)),
+                    "expand" => stacks[0].try_unary_v(|a| a.try_expand()),
+                    "push" => stacks[0].try_binary(|a, b| b.try_push(a)),
+                    "unpush" => stacks[0].try_unary_v(|a| a.try_unpush()),
+                    "pop" => stacks[0].try_unary_v(|a| a.try_pull()),
+                    // Tuple / Stats Operations
+                    "avg" | "mean" => stacks[0].unary(|a| a.mean()),
+                    "median" => stacks[0].unary(|a| a.median()),
+                    "sort" => stacks[0].unary(|a| a.sort()),
+                    "sum" => stacks[0].unary(|a| a.sum()),
+                    "prod" | "product" => stacks[0].unary(|a| a.product()),
+                    "sdev" | "sigma" => stacks[0].unary(|a| a.standard_deviation()),
+
                     // Matrix Operations
                     "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
                     "trans" | "transpose" => stacks[0].try_unary(|a| a.try_transpose()),
@@ -188,10 +201,6 @@ fn main() {
                     // Constants
                     "e" => {
                         stacks[0].push(Value::e());
-                        Return::Ok
-                    }
-                    "i" => {
-                        stacks[0].push(Value::i());
                         Return::Ok
                     }
                     "pi" => {

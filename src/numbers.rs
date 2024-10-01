@@ -3,7 +3,8 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
-use libmat::{mat::Matrix, matrix};
+use itertools::Itertools;
+use libmat::mat::Matrix;
 use num_traits::{Inv, Num, One, Signed, Zero};
 use regex::Regex;
 use rug::{
@@ -13,6 +14,7 @@ use rug::{
 };
 use std::{
     cmp::{max, min, Ordering},
+    collections::VecDeque,
     ops,
 };
 
@@ -28,12 +30,25 @@ pub enum Scalar {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Scalar(Scalar),
+    Tuple(VecDeque<Scalar>),
     Matrix(Matrix<Scalar>),
 }
 
 impl From<Matrix<Scalar>> for Value {
     fn from(x: Matrix<Scalar>) -> Self {
         Value::Matrix(x)
+    }
+}
+
+impl From<Vec<Scalar>> for Value {
+    fn from(x: Vec<Scalar>) -> Self {
+        Value::Tuple(x.into_iter().collect())
+    }
+}
+
+impl From<VecDeque<Scalar>> for Value {
+    fn from(x: VecDeque<Scalar>) -> Self {
+        Value::Tuple(x)
     }
 }
 
@@ -147,7 +162,12 @@ impl RpnToStringScalar for Float {
                     v.trim_end_matches('0').trim_end_matches('.').to_string()
                 }
             } else {
-                "0.".to_string() + &"0".repeat(exp.abs_diff(0) as usize) + s.trim_end_matches('0')
+                let zeros = exp.abs_diff(0) as usize;
+                let mut x = "0.".to_string() + &"0".repeat(zeros) + s.trim_end_matches('0');
+                if let Some(digits) = digits {
+                    x.truncate(max(digits, zeros + 1));
+                }
+                x
             }
         } else if self.is_zero() {
             s
@@ -157,8 +177,8 @@ impl RpnToStringScalar for Float {
         format!("{}{}{s}", if sign { "-" } else { "" }, radix.prefix())
     }
     fn digits(&self, radix: Radix) -> usize {
-        let (_sign, s, _exp) = self.to_sign_string_exp(radix.into(), None);
-        s.len() // @@ FIXME: large negative exp
+        let (_sign, s, exp) = self.to_sign_string_exp(radix.into(), None);
+        s.len() + exp.unwrap_or_default() as usize
     }
     fn to_string_width(&self, radix: Radix, width: Option<usize>) -> String {
         let width = width.map(|w| {
@@ -257,6 +277,12 @@ impl From<i32> for Scalar {
     }
 }
 
+impl From<usize> for Scalar {
+    fn from(x: usize) -> Self {
+        Scalar::Int(Rational::from(x))
+    }
+}
+
 impl From<Integer> for Scalar {
     fn from(x: Integer) -> Self {
         Scalar::Int(Rational::from(x))
@@ -290,6 +316,9 @@ impl From<Complex> for Scalar {
 }
 
 fn parse_float(val: &str) -> Result<Float, String> {
+    if val.is_empty() {
+        return Ok(Float::with_val(FLOAT_PRECISION, 0));
+    }
     let (f, r, v) = Radix::split_string(val);
     let v = Float::parse_radix(format!("{}{v}", if f { "-" } else { "" }), r.into())
         .map_err(|e| format!("{v}: {e}"))?;
@@ -303,31 +332,52 @@ fn parse_int(val: &str) -> Result<Integer, String> {
     Ok(v.complete())
 }
 
+fn dms2scalar(x1: Option<&Scalar>, x2: Option<&Scalar>, x3: Option<&Scalar>) -> Scalar {
+    (x1.cloned().unwrap_or_default()
+        + x2.cloned().unwrap_or_default() / 60.into()
+        + x3.cloned().unwrap_or_default() / 3600.into())
+        % 360.into()
+}
+
+fn img2float(v: &str) -> String {
+    let v = v.trim().trim_end_matches('i').trim();
+    match v {
+        "" | "+" => "1".to_string(),
+        "-" => "-1".to_string(),
+        x => x.to_string(),
+    }
+}
+
+fn median(mut list: Vec<Scalar>) -> Scalar {
+    let len = list.len();
+
+    let n = len >> 1;
+    let val = if len & 1 == 1 {
+        let (_, val, _) = list.select_nth_unstable_by(n, |a, b| a.total_cmp(b));
+        val.clone()
+    } else {
+        list.sort_unstable_by(|a, b| a.total_cmp(b));
+        (list[n - 1].clone() + list[n].clone()) / 2.into()
+    };
+    val
+}
+
 impl TryFrom<&str> for Scalar {
     type Error = String;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value.contains(&['(', 'i'][..]) {
-            // Change "1+2i" -> "(1 2)"
-            let re = Regex::new(
-                r"(\(?(?P<sr>[+-])?\s*(?P<r>(?:0[xXoObBdD])?[[:xdigit:]]+(?:[.][[:xdigit:]]+)?))?\s*(?P<si>[+-])?\s*(?P<i>(?:0[xXoObBdD])?[[:xdigit:]]+(?:[.][[:xdigit:]]+)?)[i)]",
-            )
-                .unwrap();
-            let caps = re
-                .captures(value)
-                .ok_or_else(|| format!("Failed to parse: {value}"))?;
-            let real = format!(
-                "{}{}",
-                caps.name("sr").map(|x| x.as_str()).unwrap_or(""),
-                caps.name("r").map(|x| x.as_str()).unwrap_or("0")
-            );
-            let imag = format!(
-                "{}{}",
-                caps.name("si").map(|x| x.as_str()).unwrap_or(""),
-                caps.name("i").map(|x| x.as_str()).unwrap_or("0")
-            );
+        if value.contains('i') {
+            let value = value.trim().trim_start_matches('+');
+            let (real, imag) = if let Some((r, i)) = value.rsplit_once('+') {
+                (r.trim(), img2float(i))
+            } else if let Some((r, i)) = value.rsplit_once('-') {
+                let i = format!("-{}", i.trim());
+                (r.trim(), img2float(&i))
+            } else {
+                ("0", img2float(value))
+            };
 
-            let r = parse_float(&real)?;
+            let r = parse_float(real)?;
             let i = parse_float(&imag)?;
 
             Ok(Scalar::from(Complex::from((r, i))))
@@ -372,6 +422,14 @@ impl TryFrom<&str> for Value {
             )
             .map(|m| m.into())
             .map_err(|e| e.to_string())
+        } else if value.contains('(') {
+            Ok(value
+                .split(&['(', ')', ' '][..])
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .map(Scalar::try_from)
+                .collect::<Result<Vec<Scalar>, String>>()?
+                .into())
         } else {
             Scalar::try_from(value).map(|s| s.into())
         }
@@ -517,7 +575,7 @@ impl Scalar {
                 }
             }
             Scalar::Float(_) => Err("Cannot Factor Floating point".to_string()),
-            Scalar::Complex(_) => Err("NYI".to_string()), // @@
+            Scalar::Complex(_) => Err("No multiplication of tuples".to_string()), // @@
         }
     }
 
@@ -555,6 +613,37 @@ impl Scalar {
         }
     }
 
+    /// Implement `total_cmp`
+    fn total_cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Scalar::Int(a), Scalar::Int(b)) => a.cmp(b),
+            (Scalar::Int(a), Scalar::Float(b)) => {
+                let fa = Float::with_val(FLOAT_PRECISION, a);
+                fa.total_cmp(b)
+            }
+            (Scalar::Int(a), Scalar::Complex(b)) => {
+                let ca = Complex::with_val(FLOAT_PRECISION, a);
+                ca.total_cmp(b)
+            }
+
+            (Scalar::Float(a), Scalar::Int(b)) => a.total_cmp(&Float::with_val(FLOAT_PRECISION, b)),
+            (Scalar::Float(a), Scalar::Float(b)) => a.total_cmp(b),
+            (Scalar::Float(a), Scalar::Complex(b)) => {
+                let ca = Complex::with_val(FLOAT_PRECISION, a);
+                ca.total_cmp(b)
+            }
+
+            (Scalar::Complex(a), Scalar::Int(b)) => {
+                a.total_cmp(&Complex::with_val(FLOAT_PRECISION, b))
+            }
+            (Scalar::Complex(a), Scalar::Float(b)) => {
+                a.total_cmp(&Complex::with_val(FLOAT_PRECISION, b))
+            }
+            (Scalar::Complex(a), Scalar::Complex(b)) => a.total_cmp(b),
+        }
+    }
+
+    // @@ Floats don't get exactly the right length
     pub fn to_string_radix(&self, radix: Radix, rational: bool, width: Option<usize>) -> String {
         //eprintln!("{self:?} digits:{digits:?}");
         match self {
@@ -575,14 +664,19 @@ impl Scalar {
                 } else if let Some(width) = width {
                     let rlen = r.to_string_scalar(radix).len();
                     let ilen = i.to_string_scalar(radix).len();
-                    let digits = width - sign.len() - 1 - radix.prefix().len() * 2;
+
+                    let digits = width - 2 - radix.prefix().len() * 2;
                     let (rlen, ilen) = if digits > rlen + ilen {
                         (rlen, ilen)
+                    } else if rlen >= digits && ilen >= digits {
+                        let x = digits / 2;
+                        (digits - x, x)
                     } else {
                         let t = rlen + ilen;
                         //eprintln!("digits:{digits} t:{t} :: {r} ({rlen}) + {i} ({ilen}) i");
                         (max(2, rlen * digits / t) - 1, max(2, ilen * digits / t) - 1)
                     };
+                    //eprintln!("width:{width} digits:{digits} rlen:{rlen} ilen:{ilen}");
                     format!(
                         "{}{}{}i",
                         r.to_string_scalar_len(radix, Some(rlen)),
@@ -643,6 +737,7 @@ impl Value {
     pub fn is_zero(&self) -> bool {
         match self {
             Value::Scalar(x) => x.is_zero(),
+            Value::Tuple(x) => x.is_empty(),
             Value::Matrix(x) => {
                 for i in 0..x.rows() {
                     for j in 0..x.cols() {
@@ -670,6 +765,15 @@ impl Value {
         let digits = digits.into();
         match self {
             Value::Scalar(x) => x.to_string_radix(radix, rational, digits),
+            Value::Tuple(x) => {
+                // @@ FIXME: digits / mutliple lines?
+                format!(
+                    "( {} )",
+                    x.iter()
+                        .map(|x| x.to_string_radix(radix, rational, digits))
+                        .join(" ")
+                )
+            }
             Value::Matrix(x) => {
                 let mut s = String::from("[");
                 let rowmax = x.rows();
@@ -695,15 +799,15 @@ impl Value {
     pub fn lines(&self) -> usize {
         match self {
             Value::Scalar(_) => 1,
+            Value::Tuple(_) => 1, // FIXME: wrap?
             Value::Matrix(x) => x.rows(),
         }
     }
 
-    pub fn try_factor(self) -> Result<Vec<Value>, String> {
+    pub fn try_factor(self) -> Result<Value, String> {
         match self {
-            Value::Scalar(x) => x
-                .factor()
-                .map(|x| x.into_iter().map(Value::Scalar).collect()),
+            Value::Scalar(x) => x.factor().map(|x| x.into()),
+            Value::Tuple(_) => Err("Factoring Tuple not supported".to_string()),
             Value::Matrix(_) => Err("No prime factors of matricies".to_string()),
         }
     }
@@ -733,7 +837,9 @@ impl Value {
         match (self, b) {
             (_, b) if b.is_zero() => Err("Modulo by zero".to_string()),
             (_, Value::Matrix(_)) => Err("Modulo by Matrix".to_string()),
+            (_, Value::Tuple(_)) => Err("Modulo by Tuple".to_string()),
             (_, Value::Scalar(b)) if b.is_negative() => Err("Modulo by negative".to_string()),
+            (Value::Tuple(_), Value::Scalar(_)) => Err("NYI: Modulo of Tuple".to_string()),
             (Value::Matrix(_), Value::Scalar(_)) => Err("NYI: Modulo of Matrix".to_string()),
             (Value::Scalar(a), Value::Scalar(b)) => {
                 if a.is_positive() {
@@ -770,20 +876,21 @@ impl Value {
     pub fn try_ln(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.ln())),
-            Value::Matrix(_) => Err("NYI".to_string()),
+            _ => Err("NYI".to_string()),
         }
     }
 
     pub fn try_abs(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.abs())),
-            Value::Matrix(_) => Err("NYI".to_string()),
+            _ => Err("NYI".to_string()),
         }
     }
 
     pub fn try_exp(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.exp())),
+            Value::Tuple(_) => Err("NYI".to_string()),
             Value::Matrix(x) => x.try_exp().map(Value::Matrix),
         }
     }
@@ -791,6 +898,7 @@ impl Value {
     pub fn try_log10(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.log10())),
+            Value::Tuple(_) => Err("NYI".to_string()),
             Value::Matrix(_) => Err("NYI".to_string()),
         }
     }
@@ -798,6 +906,7 @@ impl Value {
     pub fn try_log2(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.try_log2()?)),
+            Value::Tuple(_) => Err("NYI".to_string()),
             Value::Matrix(_) => Err("NYI".to_string()),
         }
     }
@@ -805,13 +914,20 @@ impl Value {
     pub fn try_dms_conv(&self) -> Result<Self, String> {
         match &self {
             Value::Scalar(x) => {
-                let mut m = matrix! { Scalar::zero(), Scalar::zero(), Scalar::zero()};
-                m[0][0] = x.trunc()? % Scalar::from(360);
-                let f = x.abs_sub(&m[0][0]) * Scalar::from(60);
-                m[0][1] = f.trunc()?;
-                let f = (f - m[0][1].clone()) * Scalar::from(60);
-                m[0][2] = f;
+                let mut m = vec![Scalar::zero(), Scalar::zero(), Scalar::zero()];
+                m[0] = x.trunc()? % Scalar::from(360);
+                let f = x.abs_sub(&m[0]) * Scalar::from(60);
+                m[1] = f.trunc()?;
+                let f = (f - m[1].clone()) * Scalar::from(60);
+                m[2] = f;
                 Ok(m.into())
+            }
+            Value::Tuple(t) => {
+                if t.len() > 3 {
+                    Err(format!("Tuple too long ({} > 3)", t.len()))
+                } else {
+                    Ok(dms2scalar(t.front(), t.get(1), t.get(2)).into())
+                }
             }
             Value::Matrix(m) => {
                 if m.rows() != 1 || m.cols() > 3 {
@@ -821,11 +937,7 @@ impl Value {
                         m.cols()
                     ))
                 } else {
-                    Ok(((m[0].first().cloned().unwrap_or_default()
-                        + m[0].get(1).cloned().unwrap_or_default() / Scalar::from(60)
-                        + m[0].get(2).cloned().unwrap_or_default() / Scalar::from(3600))
-                        % Scalar::from(360))
-                    .into())
+                    Ok(dms2scalar(m[0].first(), m[0].get(1), m[0].get(2)).into())
                 }
             }
         }
@@ -835,6 +947,7 @@ impl Value {
     pub fn try_trunc(&self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(x.trunc()?.into()),
+            Value::Tuple(_) => Err("NYI".to_string()),
             Value::Matrix(x) => {
                 let mut m = x.clone();
                 for i in 0..x.rows() {
@@ -851,6 +964,7 @@ impl Value {
     pub fn try_round(&self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(x.round()?.into()),
+            Value::Tuple(_) => Err("NYI".to_string()),
             Value::Matrix(x) => {
                 let mut m = x.clone();
                 for i in 0..x.rows() {
@@ -863,10 +977,159 @@ impl Value {
         }
     }
 
+    // Tuple Functions
+    pub fn try_push(self, b: Self) -> Result<Self, String> {
+        match (self, b) {
+            (Value::Scalar(s), Value::Tuple(mut t)) => {
+                t.push_front(s);
+                Ok(t.into())
+            }
+            (Value::Tuple(mut t), Value::Scalar(s)) => {
+                t.push_back(s);
+                Ok(t.into())
+            }
+            (Value::Tuple(mut t1), Value::Tuple(mut t2)) => {
+                t1.append(&mut t2);
+                Ok(t1.into())
+            }
+            (Value::Scalar(a), Value::Scalar(b)) => Ok(vec![a, b].into()),
+            (Value::Matrix(_), _) | (_, Value::Matrix(_)) => {
+                Err("Unsupported: modification of matrices".to_string())
+            }
+        }
+    }
+
+    pub fn try_unpush(self) -> Result<Vec<Self>, String> {
+        match self {
+            Value::Scalar(_) => Err("Illegal Operation: unpush of scalar".to_string()),
+            Value::Tuple(mut t) => {
+                if let Some(a) = t.pop_front() {
+                    Ok(vec![t.into(), a.into()])
+                } else {
+                    Ok(vec![t.into()])
+                }
+            }
+            Value::Matrix(_) => Err("Unsupported: modification of matrices".to_string()),
+        }
+    }
+
+    pub fn try_pull(self) -> Result<Vec<Self>, String> {
+        match self {
+            Value::Scalar(s) => Ok(vec![Value::Scalar(s)]),
+            Value::Tuple(mut t) => {
+                if let Some(a) = t.pop_back() {
+                    Ok(vec![a.into(), t.into()])
+                } else {
+                    Ok(vec![t.into()])
+                }
+            }
+            Value::Matrix(_) => Err("Unsupported: modification of matrices".to_string()),
+        }
+    }
+
+    pub fn try_expand(self) -> Result<Vec<Self>, String> {
+        match self {
+            Value::Scalar(s) => Ok(vec![Value::Scalar(s)]),
+            Value::Tuple(t) => Ok(t.into_iter().rev().map(Value::Scalar).collect()),
+            Value::Matrix(m) if m.rows() == 1 => {
+                Ok(m[0].iter().rev().cloned().map(Value::Scalar).collect())
+            }
+            _ => Err("Unable to expand".to_string()),
+        }
+    }
+
+    pub fn sum(self) -> Self {
+        match self {
+            Value::Scalar(s) => Value::Scalar(s),
+            Value::Tuple(t) => Value::Scalar(t.into_iter().sum()),
+            Value::Matrix(m) => Value::Scalar(m.into_iter().sum()),
+        }
+    }
+
+    pub fn product(self) -> Self {
+        match self {
+            Value::Scalar(s) => Value::Scalar(s),
+            Value::Tuple(t) => Value::Scalar(t.into_iter().product()),
+            Value::Matrix(m) => Value::Scalar(m.into_iter().product()),
+        }
+    }
+
+    // Stats Functions
+    pub fn mean(self) -> Self {
+        match self {
+            Value::Scalar(s) => Value::Scalar(s),
+            Value::Tuple(t) => {
+                let len = t.len().into();
+                let v: Scalar = t.into_iter().sum();
+                Value::Scalar(v / len)
+            }
+            Value::Matrix(m) => {
+                let len: Scalar = Scalar::from(m.rows()) * m.cols().into();
+                let sum: Scalar = m.into_iter().sum();
+                Value::Scalar(sum / len)
+            }
+        }
+    }
+
+    pub fn median(self) -> Self {
+        match self {
+            Value::Scalar(s) => Value::Scalar(s),
+            Value::Tuple(t) => Value::Scalar(median(t.into_iter().collect())),
+            Value::Matrix(m) => {
+                let list = m.into_iter().collect::<Vec<_>>();
+                let val = median(list);
+                Value::Scalar(val)
+            }
+        }
+    }
+
+    pub fn sort(self) -> Self {
+        match self {
+            Value::Scalar(s) => Value::Scalar(s),
+            Value::Tuple(t) => Value::Tuple(
+                t.into_iter()
+                    .sorted_unstable_by(|a, b| a.total_cmp(b))
+                    .collect(),
+            ),
+            Value::Matrix(m) => Value::Tuple(
+                m.into_iter()
+                    .sorted_unstable_by(|a, b| a.total_cmp(b))
+                    .collect(),
+            ),
+        }
+    }
+
+    pub fn standard_deviation(self) -> Self {
+        match self {
+            Value::Scalar(_) => Value::Scalar(Scalar::zero()),
+            Value::Tuple(t) => {
+                let len: Scalar = t.len().into();
+                let sum: Scalar = t.iter().cloned().sum();
+                let mean = sum / len.clone();
+                let differences: Scalar = t
+                    .into_iter()
+                    .map(|x| (x - mean.clone()).pow(2.into()))
+                    .sum::<Scalar>();
+                Value::Scalar((differences / len).pow(Scalar::from(2).inv()))
+            }
+            Value::Matrix(m) => {
+                let len: Scalar = Scalar::from(m.rows()) * m.cols().into();
+                let sum: Scalar = m.clone().into_iter().sum();
+                let mean = sum / len.clone();
+                let differences: Scalar = m
+                    .into_iter()
+                    .map(|x| (x - mean.clone()).pow(2.into()))
+                    .sum::<Scalar>();
+                Value::Scalar((differences / len).pow(Scalar::from(2).inv()))
+            }
+        }
+    }
+
     // Matrix Only Functions
     pub fn try_det(self) -> Result<Self, String> {
         match self {
             Value::Scalar(_) => Err("No determinate for Scalar".to_string()),
+            Value::Tuple(_) => Err("No determinate for Tuple".to_string()),
             Value::Matrix(x) => Ok(Value::Scalar(x.det().map_err(|e| e.to_string())?)),
         }
     }
@@ -874,6 +1137,7 @@ impl Value {
     pub fn try_rref(self) -> Result<Self, String> {
         match self {
             Value::Scalar(_) => Err("No determinate for Scalar".to_string()),
+            Value::Tuple(_) => Err("No determinate for Tuple".to_string()),
             Value::Matrix(x) => Ok(Value::Matrix(x.rref())),
         }
     }
@@ -881,6 +1145,7 @@ impl Value {
     pub fn try_transpose(self) -> Result<Self, String> {
         match self {
             Value::Scalar(_) => Err("No Transpose for Scalar".to_string()),
+            Value::Tuple(t) => Ok(t.into_iter().rev().collect::<VecDeque<_>>().into()),
             Value::Matrix(x) => Ok(Value::Matrix(x.transpose())),
         }
     }
@@ -895,6 +1160,7 @@ impl Value {
                     Err("Identity Matrix can only be created with integer size".to_string())
                 }
             }
+            Value::Tuple(_) => Err("Not INT or Matrix".to_string()),
             Value::Matrix(x) => {
                 if x.is_square() {
                     Matrix::one(x.rows())
@@ -918,6 +1184,7 @@ impl Value {
                     Err("Identity Matrix can only be created with integer size".to_string())
                 }
             }
+            Value::Tuple(_) => Err("Not INT or Matrix".to_string()),
             Value::Matrix(x) => Matrix::new(x.rows(), x.cols(), Scalar::one())
                 .map(Value::Matrix)
                 .map_err(|e| e.to_string()),
@@ -927,9 +1194,6 @@ impl Value {
     pub fn e() -> Self {
         let f = Float::with_val(FLOAT_PRECISION, 1);
         Value::Scalar(Scalar::from(f.exp()))
-    }
-    pub fn i() -> Self {
-        Value::Scalar(Scalar::from(Complex::with_val(FLOAT_PRECISION, (0, 1))))
     }
     pub fn pi() -> Self {
         Value::Scalar(Scalar::from(Float::with_val(FLOAT_PRECISION, Constant::Pi)))
@@ -978,6 +1242,7 @@ impl Inv for Value {
                     Ok(Value::Scalar(x.inv()))
                 }
             }
+            Value::Tuple(_) => Err("No multiplication of tuples".to_string()),
             Value::Matrix(x) => {
                 if let Ok(Some(m)) = x.inv() {
                     Ok(Value::Matrix(m))
@@ -995,10 +1260,20 @@ impl ops::Mul<Value> for Value {
     fn mul(self, other: Self) -> Self::Output {
         match (self, other) {
             (Value::Scalar(a), Value::Scalar(b)) => Ok(Value::Scalar(a * b)),
+            (Value::Scalar(a), Value::Tuple(b)) => {
+                Ok(Value::Tuple(b.into_iter().map(|x| a.clone() * x).collect()))
+            }
             (Value::Scalar(a), Value::Matrix(b)) => Ok(Value::Matrix(b * a)),
+            (Value::Tuple(a), Value::Scalar(b)) => {
+                Ok(Value::Tuple(a.into_iter().map(|x| x * b.clone()).collect()))
+            }
             (Value::Matrix(a), Value::Scalar(b)) => Ok(Value::Matrix(a * b)),
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a * b).map(Value::Matrix).map_err(|e| e.to_string())
+            }
+            (Value::Tuple(_), Value::Tuple(_)) => Err("No multiplication of tuples".to_string()),
+            (Value::Tuple(_), Value::Matrix(_)) | (Value::Matrix(_), Value::Tuple(_)) => {
+                Err("No multiplication of tuples and matrices".to_string())
             }
         }
     }
@@ -1064,6 +1339,8 @@ impl Pow<Value> for Value {
                 }
             }
             (Value::Matrix(_), Value::Matrix(_)) => Err("Unsupported: matrix ^ matrix".to_string()),
+            (Value::Tuple(_), _) => Err("No multiplication of tuples".to_string()),
+            (_, Value::Tuple(_)) => Err("Illegal Operation: x ^ ( tuple )".to_string()),
         }
     }
 }
@@ -1075,7 +1352,19 @@ impl ops::Rem for Value {
         match (self, other) {
             (Value::Scalar(a), Value::Scalar(b)) => Ok(Value::Scalar(a % b)),
             (Value::Matrix(_a), Value::Scalar(_b)) => Err("NYI".to_string()),
-            _ => Err("Illegal Operation: ".to_string()),
+            (Value::Matrix(_a), Value::Matrix(_b)) => Err("NYI".to_string()),
+            (Value::Tuple(_), Value::Scalar(_)) | (Value::Scalar(_), Value::Tuple(_)) => {
+                Err("NYI: tuple/scalar arithmetic".to_string())
+            }
+            (Value::Tuple(_), Value::Tuple(_)) => {
+                Err("Illegal Operation: tuple/tuple arithmetic".to_string())
+            }
+            (Value::Tuple(_), Value::Matrix(_)) | (Value::Matrix(_), Value::Tuple(_)) => {
+                Err("Illegal Operation: tuple/matrix arithmetic".to_string())
+            }
+            (Value::Scalar(_), Value::Matrix(_)) => {
+                Err("Illegal Operation: matrix/scalar arithmetic".to_string())
+            }
         }
     }
 }
@@ -1089,7 +1378,18 @@ impl ops::Sub<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a - b).map(Value::Matrix).map_err(|e| e.to_string())
             }
-            _ => Err("Illegal Operation: Matrix and Scalar Subtraction".to_string()),
+            (Value::Tuple(_), Value::Scalar(_)) | (Value::Scalar(_), Value::Tuple(_)) => {
+                Err("NYI: tuple/scalar arithmetic".to_string())
+            }
+            (Value::Tuple(_), Value::Tuple(_)) => {
+                Err("Illegal Operation: tuple/tuple arithmetic".to_string())
+            }
+            (Value::Tuple(_), Value::Matrix(_)) | (Value::Matrix(_), Value::Tuple(_)) => {
+                Err("Illegal Operation: tuple/matrix arithmetic".to_string())
+            }
+            (Value::Matrix(_), Value::Scalar(_)) | (Value::Scalar(_), Value::Matrix(_)) => {
+                Err("Illegal Operation: matrix/scalar arithmetic".to_string())
+            }
         }
     }
 }
@@ -1478,6 +1778,20 @@ impl std::iter::Sum for Scalar {
     }
 }
 
+impl std::iter::Product for Scalar {
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = Scalar>,
+    {
+        let mut a = Scalar::one();
+
+        for b in iter {
+            a *= b;
+        }
+        a
+    }
+}
+
 impl Default for Scalar {
     fn default() -> Self {
         Scalar::zero()
@@ -1489,6 +1803,7 @@ mod test {
     use super::*;
     use libmat::mat::Matrix;
     use num_traits::{One, Zero};
+    use std::collections::VecDeque;
 
     #[test]
     fn scalar_one_equality() {
@@ -1565,18 +1880,40 @@ mod test {
     }
 
     #[test]
+    fn value_matrix_from_str_imaginary() {
+        let b = Value::try_from("[ i 0 0; 0 i 0; 0 0 i]").unwrap();
+        let i3 = Value::identity(3.into()).unwrap();
+        let i = Value::try_from("i").unwrap();
+
+        assert_eq!(i3 * i, Ok(b));
+    }
+
+    #[test]
+    fn value_tuple_from_str() {
+        let a = Value::try_from("( 1 2/3 3 4+2i 5").unwrap();
+        let v = Value::Tuple(VecDeque::from([
+            1.into(),
+            rug::Rational::from((2, 3)).into(),
+            3.into(),
+            rug::Complex::with_val(FLOAT_PRECISION, (4.0, 2.0)).into(),
+            5.into(),
+        ]));
+
+        assert_eq!(a, v);
+    }
+
+    #[test]
     fn scalar_from_str_complex() {
         let a = Scalar::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, 2.0)));
         let b = Scalar::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -2.0)));
+        let c = Scalar::from(rug::Complex::with_val(FLOAT_PRECISION, (0.0, -1.0)));
 
-        assert_eq!(Scalar::try_from("(0 2)"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0+2i"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0 +2i"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0 + 2i"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0 + 0x2i"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0b0.0 + 0x2i"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("2i"), Ok(a));
-        assert_eq!(Scalar::try_from("(0 -2)"), Ok(b.clone()));
         assert_eq!(Scalar::try_from("0-2i"), Ok(b.clone()));
         assert_eq!(Scalar::try_from("0 -2i"), Ok(b.clone()));
         assert_eq!(Scalar::try_from("0 - 2i"), Ok(b.clone()));
@@ -1584,6 +1921,10 @@ mod test {
         assert_eq!(Scalar::try_from("+0-2i"), Ok(b.clone()));
         assert_eq!(Scalar::try_from("+0o0-0d2.0i"), Ok(b.clone()));
         assert_eq!(Scalar::try_from("-2i"), Ok(b));
+        assert_eq!(Scalar::try_from("0 - 1i"), Ok(c.clone()));
+        assert_eq!(Scalar::try_from("-1i"), Ok(c.clone()));
+        assert_eq!(Scalar::try_from("0-i"), Ok(c.clone()));
+        assert_eq!(Scalar::try_from("-i"), Ok(c));
     }
 
     #[test]
@@ -1778,5 +2119,22 @@ mod test {
         assert_eq!(ap.try_modulo(&bp), Ok(ap.clone()));
         assert_eq!(bp.try_modulo(&ap), Ok(cp.clone()));
         assert_eq!(an.try_modulo(&bp), Ok(cp));
+    }
+
+    #[test]
+    fn value_matrix_stats() {
+        let b = Value::try_from("[ -99 -10+4i -1; 6 -14 5; 10-4i 11 101]").unwrap();
+
+        assert_eq!(b.clone().median(), 5.into());
+        assert_eq!(b.clone().mean(), 1.into());
+        assert_eq!(b.sum(), 9.into());
+    }
+
+    #[test]
+    fn value_sigma() {
+        let b = Value::try_from("(2 4 4 4 5 5 7 9)").unwrap();
+
+        assert_eq!(b.clone().mean(), 5.into());
+        assert_eq!(b.standard_deviation(), 2.into());
     }
 }

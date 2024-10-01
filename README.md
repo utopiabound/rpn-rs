@@ -12,10 +12,14 @@ Also can be run as command line or as a graphical text user interface.
 * Number - Scalar (via [`rug`](latest/rug/struct.Integer.html) crate)
    * Arbitrary precision rational numbers ([`GMP`](https://gmplib.org/))
    * High-precision floating-point ([`MPFR`](https://www.mpfr.org/))
-   * Complex numbers ([`MPC`](https://www.multiprecision.org/mpc/))
+   * High-precision complex numbers ([`MPC`](https://www.multiprecision.org/mpc/))
 * Numbers - Matrix (via [`libmat`](https://github.com/wiebecommajonas/libmat))
    * Matrices of any of above scalars
    * Correct interaction between scalars and Matrices
+* Numbers - Tuples
+   * Vector of any scalar value
+   * Allow for statistical functions on groups of data
+   * Allow for stack functions on tuples (push/pop)
 * User-Interface
    * `GUI` - Graphical User Interface
    * `TUI` - Full terminal user interface

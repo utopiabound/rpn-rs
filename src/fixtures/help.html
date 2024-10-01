@@ -8,7 +8,8 @@
   <body>
     <h1>RPN-rs is a graphical reverse polish notation (RPN) calculator</h1>
     <p>RPN-rs works with arbitrary precision rational numbers, large precision
-      floating point numbers, complex numbers, and matrices (in progress).
+      floating point numbers, complex numbers.
+      These values can also be collected into <a href="https://en.wikipedia.org/wiki/Matrix_(mathematics)">matrices</a> and <a href="https://en.wikipedia.org/wiki/Tuple">tuples</a>.
       Numbers can be displayed in 4 different radix modes (base 2, 8, 10, 16).
       <!-- Complex numbers can be displayed in either Cartesian or polar
       form.--></p>
@@ -24,18 +25,21 @@
 
     <p>Complex numbers can be entered in any of the following forms:</p>
     <pre>
-  (2 4)
-  (2, 4)
   2+4i
 </pre>
     <p>Matrix can be entered as follows:</p>
     <pre>
   [ 1 2 3; 4 5 6; 7 8 9 ]
-  [ 1.1 2.2; 3+2i 4 ]
+  [ 1.1 2.2; 3+2i 4
+</pre>
+    <p>Tuples can be entered as follows:</p>
+    <pre>
+  ( 1 2 3/4 4+2i 5.5 )
+  ( 1 2 3/4 4+2i 5.5
 </pre>
 
     <table>
-      <tr><th align="left">Command</th><th align="left">Stack Consumed</th><th align="left">Description</th><th>Representation</th></tr>
+      <tr><th align="left">Command</th><th align="left">Stack Consumed</th><th align="left">Description</th><th align="left">Representation</th></tr>
       <tr><td>(#)quit | (#)exit | q</td><td><i>N/A</i></td><td colspan=2>Quit application</td></tr>
       <tr><td>(#)help | ?</td><td><i>N/A</i></td><td colspan=2>Display this help</td></tr>
       <tr><td>(#)about</td><td><i>N/A</i></td><td colspan=2>Display program copyright info</td></tr>
@@ -47,12 +51,13 @@
       <tr><td>#Q | #rat(ional)</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Rational_number">Rational</a></td></tr>
       <tr><th colspan=4>Stack Operations</th></tr>
       <tr><td>clear</td><td><i>all</i></td><td colspan=2>clear stack and history</td></tr>
-      <tr><td>drop | pop | del</td><td>1</td><td colspan=2>Remove first item on stack</td></tr>
+      <tr><td>drop | del(ete)</td><td>1</td><td colspan=2>Remove first item on stack</td></tr>
       <tr><td>dup | <i>[enter]</i></td><td>0</td><td colspan=2>Duplicate first item on stack</td></tr>
       <tr><td>rollu(p) | ru(p) | roll</td><td>0</td><td colspan=2>Pop 1 item, and move it to end of stack</td></tr>
       <tr><td>rolld(own) | rd(own)</td><td>0</td><td colspan=2>Opposite of rollup</td></tr>
       <tr><td>swap | sw</td><td>0</td><td colspan=2>Swap first two items on stack</td></tr>
       <tr><td>undo | u</td><td><i>N/A</i></td><td colspan=2>Undo last operation (other than clear)</td></tr>
+
       <tr><th colspan=4>Arithmetic Operations</th></tr>
       <tr><td colspan=4 align="center">results of operations are pushed to stack</td></tr>
       <tr><td>+</td><td>2</td><td>Add first two items</td><td><i>x+y</i></td></tr>
@@ -71,7 +76,7 @@
       <tr><td>sqrt</td><td>1</td><td>Square root</td><td><i>./&macr;x</i></td></tr>
       <tr><td>trunc(ate)</td><td>1</td><td colspan=2>Truncate value to Integer</td></tr>
       <tr><td>round | rnd</td><td>1</td><td colspan=2>Round value to Integer (a half, rounds away from zero)</td></tr>
-      <tr><td>sum</td><td><i>all</i></td><td colspan=2>Add all values on stack togther and return sum</td></tr>
+
       <tr><th colspan=4>Scalar Operations</th></tr>
       <tr><td>factor</td><td>1</td><td colspan=2>Find all <a href="https://en.wikipedia.org/wiki/Prime_number">prime</a> factors of item</td></tr>
       <tr><td>ln</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Natural_logarithm">Natural logarithm</a></td><td><i>ln(x)</i></td></tr>
@@ -79,13 +84,29 @@
       <tr><td>log2</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Logarithm">Logarithm</a> (base 2)</td><td><i>log2(x)</i></td></tr>
       <tr><td>permute | nPm</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Permutation#k-permutations_of_n">Permutation</a> m-permutations of n</td><td><i>xPy</i></td></tr>
       <tr><td>choose | nCm</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Combination">Combination</a> "n choose m"</td><td><i>xCy</i></td></tr>
+
       <tr><th colspan=4>Binary Operations</th></tr>
       <tr><td>&lt;&lt; | lshift</td><td>2</td><td>Bitwise left shift</td><td><i>x&laquo;y</i></td></tr>
       <tr><td>&gt;&gt; | rshift</td><td>2</td><td>Bitwise right shift</td><td><i>x&raquo;y</i></td></tr>
-      <tr><td colspan=4 align="center"><b>Matrix Operations</b></td></tr>
+
+      <tr><th colspan=4>Tuple/Stack Operations</th></tr>
+      <tr><td>push</td><td>2</td><td>Collect the top two values into a tuple (will join tuples)</td><td><i>y.push(x)</i></td></tr>
+      <tr><td>pop</td><td>1</td><td>Pull the top value from tuple</td><td><i>x.pop()</i></td></tr>
+      <tr><td>collect</td><td><i>all</i></td><td colspan=2>Collect all values into a tuple</td></tr>
+      <tr><td>expand</td><td>1</td><td colspan=2>Push all the values from tuple onto the stack</td></tr>
+
+      <tr><th colspan=4>Statistical Operations (meaningful on tuples and matrices)</th></tr>
+      <tr><td>avg | mean</td><td>1</td><td>Find the average value</td><td><i>avg(x)</i></td></tr>
+      <tr><td>median</td><td>1</td><td>Find the median value</td><td><i>median(x)</i></td></tr>
+      <tr><td>sdev | sigma</td><td>1</td><td>Find the standar deviation</td><td><i>sigma(x)</i></td></tr>
+      <tr><td>sum</td><td>1</td><td colspan=2>Add all values in element togther and return sum</td></tr>
+      <tr><td>prod(uct)</td><td>1</td><td colspan=2>Multiply all values in element togther and return sum</td></tr>
+
+      <tr><th colspan=4>Matrix Operations</th></tr>
       <tr><td>det | determinant</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Determinant">Determinant</a></td><td><i>det(x)</i></td></tr>
       <tr><td>rref</td><td>1</td><td colspan=2><a href="https://en.wikipedia.org/wiki/Row_echelon_form#Reduced_row_echelon_form">Reduce Row Echelon Form</a></td></tr>
       <tr><td>trans | transpose</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Transpose">Transpose</a></td><td><i>x^T</i></td></tr>
+
       <tr><th colspan=4>Constants</th></tr>
       <tr><td>i</td><td>0</td><td>Square root of -1</td><td><i>i</i> | <i>./&macr;-1</i></td></tr>
       <tr><td>e</td><td>0</td><td><a href="https://en.wikipedia.org/wiki/E_(mathematical_constant)">Euler's Number</a></td><td><i>e</i></td></tr>

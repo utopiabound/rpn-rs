@@ -10,6 +10,7 @@ readme = "README.md"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "wrap_help"] }
+itertools = "0.13"
 #libmat = "0.3"
 libmat = { git = "https://github.com/utopiabound/libmat", branch = "rref" }
 log = "0.4"
