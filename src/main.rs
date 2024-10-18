@@ -15,7 +15,7 @@ use crate::{
 use clap::Parser;
 use num_traits::Inv;
 use rug::ops::Pow;
-use std::collections::VecDeque;
+use std::{collections::VecDeque, ops::Neg as _};
 
 #[derive(Parser, Debug)]
 /// RPN Calculator
@@ -152,8 +152,8 @@ fn main() {
                     }
                     // Arithmatic Operations
                     "+" => stacks[0].try_binary(|a, b| a + b),
-                    "*" => stacks[0].try_binary(|a, b| a * b),
                     "-" => stacks[0].try_binary(|a, b| a - b),
+                    "*" => stacks[0].try_binary(|a, b| a * b),
                     "/" => stacks[0].try_binary(|a, b| a / b),
                     "!" => stacks[0].try_unary(|a| a.try_factorial()),
                     "abs" => stacks[0].try_unary(|a| a.try_abs()),
@@ -162,6 +162,7 @@ fn main() {
                     "ln" => stacks[0].try_unary(|a| a.try_ln()),
                     "log" | "log10" => stacks[0].try_unary(|a| a.try_log10()),
                     "log2" => stacks[0].try_unary(|a| a.try_log2()),
+                    "neg" => stacks[0].unary(|a| a.neg()),
                     "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
                     "%" | "rem" => stacks[0].try_binary(|a, b| a % b),
                     "sqr" => stacks[0].try_unary(|a| a.clone() * a),
@@ -171,8 +172,10 @@ fn main() {
                     "permute" | "nPm" => stacks[0].try_binary(|a, b| a.try_permute(b)),
                     "choose" | "nCm" => stacks[0].try_binary(|a, b| a.try_choose(b)),
                     "root" => stacks[0].try_binary(|a, b| a.try_root(b)),
-                    "round" | "rnd" => stacks[0].try_unary(|a| a.try_round()),
-                    "trunc" | "truncate" => stacks[0].try_unary(|a| a.try_trunc()),
+                    "round" | "rnd" => stacks[0].unary(|a| a.round()),
+                    "trunc" | "truncate" => stacks[0].unary(|a| a.trunc()),
+                    "floor" => stacks[0].unary(|a| a.floor()),
+                    "ceil" => stacks[0].unary(|a| a.ceil()),
                     "factor" => stacks[0].try_unary(|a| a.try_factor()),
                     // Tuple Operations
                     "collect" => stacks[0].try_reduce(|acc, e| acc.try_push(e)),

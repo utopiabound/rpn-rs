@@ -3,7 +3,7 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
-use itertools::Itertools;
+use itertools::{EitherOrBoth, Itertools as _};
 use libmat::mat::Matrix;
 use num_traits::{Inv, Num, One, Signed, Zero};
 use regex::Regex;
@@ -579,21 +579,47 @@ impl Scalar {
         }
     }
 
-    /// Truncate to Integer
-    pub fn trunc(&self) -> Result<Self, String> {
+    /// Floor
+    pub fn floor(self) -> Self {
         match self {
-            Scalar::Int(x) => Ok(x.clone().trunc().into()),
-            Scalar::Float(x) => Ok(x.clone().trunc().into()),
-            Scalar::Complex(_x) => Err("No Truncation of Complex Values".to_string()),
+            Scalar::Int(x) => x.floor().into(),
+            Scalar::Float(x) => x.floor().into(),
+            Scalar::Complex(x) => {
+                Complex::from((x.real().clone().floor(), x.imag().to_owned().floor())).into()
+            }
+        }
+    }
+
+    /// Floor
+    pub fn ceil(self) -> Self {
+        match self {
+            Scalar::Int(x) => x.ceil().into(),
+            Scalar::Float(x) => x.ceil().into(),
+            Scalar::Complex(x) => {
+                Complex::from((x.real().clone().ceil(), x.imag().to_owned().ceil())).into()
+            }
+        }
+    }
+
+    /// Truncate to Integer
+    pub fn trunc(self) -> Self {
+        match self {
+            Scalar::Int(x) => x.trunc().into(),
+            Scalar::Float(x) => x.trunc().into(),
+            Scalar::Complex(x) => {
+                Complex::from((x.real().clone().trunc(), x.imag().to_owned().trunc())).into()
+            }
         }
     }
 
     /// Round to nearest Integer
-    pub fn round(&self) -> Result<Self, String> {
+    pub fn round(self) -> Self {
         match self {
-            Scalar::Int(x) => Ok(x.clone().round().into()),
-            Scalar::Float(x) => Ok(x.clone().round().into()),
-            Scalar::Complex(_x) => Err("No Rounding of Complex Values".to_string()),
+            Scalar::Int(x) => x.round().into(),
+            Scalar::Float(x) => x.round().into(),
+            Scalar::Complex(x) => {
+                Complex::from((x.real().clone().round(), x.imag().to_owned().round())).into()
+            }
         }
     }
 
@@ -915,9 +941,9 @@ impl Value {
         match &self {
             Value::Scalar(x) => {
                 let mut m = vec![Scalar::zero(), Scalar::zero(), Scalar::zero()];
-                m[0] = x.trunc()? % Scalar::from(360);
+                m[0] = x.clone().trunc() % Scalar::from(360);
                 let f = x.abs_sub(&m[0]) * Scalar::from(60);
-                m[1] = f.trunc()?;
+                m[1] = f.clone().trunc();
                 let f = (f - m[1].clone()) * Scalar::from(60);
                 m[2] = f;
                 Ok(m.into())
@@ -944,35 +970,69 @@ impl Value {
     }
 
     /// Truncate values to Integer
-    pub fn try_trunc(&self) -> Result<Self, String> {
+    pub fn trunc(self) -> Self {
         match self {
-            Value::Scalar(x) => Ok(x.trunc()?.into()),
-            Value::Tuple(_) => Err("NYI".to_string()),
+            Value::Scalar(x) => x.trunc().into(),
+            Value::Tuple(x) => x.into_iter().map(|x| x.trunc()).collect::<Vec<_>>().into(),
             Value::Matrix(x) => {
                 let mut m = x.clone();
                 for i in 0..x.rows() {
                     for j in 0..x.cols() {
-                        m[i][j] = x[i][j].trunc()?;
+                        m[i][j] = x[i][j].clone().trunc();
                     }
                 }
-                Ok(m.into())
+                m.into()
+            }
+        }
+    }
+
+    /// Truncate values to Integer
+    pub fn floor(self) -> Self {
+        match self {
+            Value::Scalar(x) => x.floor().into(),
+            Value::Tuple(x) => x.into_iter().map(|x| x.floor()).collect::<Vec<_>>().into(),
+            Value::Matrix(x) => {
+                let mut m = x.clone();
+                for i in 0..x.rows() {
+                    for j in 0..x.cols() {
+                        m[i][j] = x[i][j].clone().floor();
+                    }
+                }
+                m.into()
+            }
+        }
+    }
+
+    /// Truncate values to Integer
+    pub fn ceil(self) -> Self {
+        match self {
+            Value::Scalar(x) => x.ceil().into(),
+            Value::Tuple(x) => x.into_iter().map(|x| x.ceil()).collect::<Vec<_>>().into(),
+            Value::Matrix(x) => {
+                let mut m = x.clone();
+                for i in 0..x.rows() {
+                    for j in 0..x.cols() {
+                        m[i][j] = x[i][j].clone().ceil();
+                    }
+                }
+                m.into()
             }
         }
     }
 
     /// Round values to Integer
-    pub fn try_round(&self) -> Result<Self, String> {
+    pub fn round(self) -> Self {
         match self {
-            Value::Scalar(x) => Ok(x.round()?.into()),
-            Value::Tuple(_) => Err("NYI".to_string()),
+            Value::Scalar(x) => x.round().into(),
+            Value::Tuple(x) => x.into_iter().map(|x| x.round()).collect::<Vec<_>>().into(),
             Value::Matrix(x) => {
                 let mut m = x.clone();
                 for i in 0..x.rows() {
                     for j in 0..x.cols() {
-                        m[i][j] = x[i][j].round()?;
+                        m[i][j] = x[i][j].clone().round();
                     }
                 }
-                Ok(m.into())
+                m.into()
             }
         }
     }
@@ -1215,7 +1275,22 @@ impl ops::Add<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a + b).map(Value::Matrix).map_err(|e| e.to_string())
             }
-            _ => Err("Illegal Operation: Scalar and Matrix Addition".to_string()),
+            (Value::Tuple(a), Value::Tuple(b)) => Ok(a
+                .into_iter()
+                .zip_longest(b)
+                .map(|x| match x {
+                    EitherOrBoth::Both(x, y) => x + y,
+                    EitherOrBoth::Left(x) => x,
+                    EitherOrBoth::Right(x) => x,
+                })
+                .collect::<Vec<_>>()
+                .into()),
+            (Value::Tuple(_), Value::Matrix(_)) | (Value::Matrix(_), Value::Tuple(_)) => {
+                Err("NYI".to_string())
+            }
+            (Value::Scalar(_), _) | (_, Value::Scalar(_)) => {
+                Err("Illegal Operation: Scalar and Non-Scalar Addition".to_string())
+            }
         }
     }
 }
@@ -1275,6 +1350,18 @@ impl ops::Mul<Value> for Value {
             (Value::Tuple(_), Value::Matrix(_)) | (Value::Matrix(_), Value::Tuple(_)) => {
                 Err("No multiplication of tuples and matrices".to_string())
             }
+        }
+    }
+}
+
+impl ops::Neg for Value {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        match self {
+            Value::Scalar(x) => x.neg().into(),
+            Value::Tuple(x) => x.into_iter().map(|x| x.neg()).collect::<Vec<_>>().into(),
+            Value::Matrix(x) => x.neg().into(),
         }
     }
 }
@@ -1378,11 +1465,18 @@ impl ops::Sub<Value> for Value {
             (Value::Matrix(a), Value::Matrix(b)) => {
                 (a - b).map(Value::Matrix).map_err(|e| e.to_string())
             }
+            (Value::Tuple(a), Value::Tuple(b)) => Ok(a
+                .into_iter()
+                .zip_longest(b)
+                .map(|x| match x {
+                    EitherOrBoth::Both(x, y) => x - y,
+                    EitherOrBoth::Left(x) => x,
+                    EitherOrBoth::Right(x) => -x,
+                })
+                .collect::<Vec<_>>()
+                .into()),
             (Value::Tuple(_), Value::Scalar(_)) | (Value::Scalar(_), Value::Tuple(_)) => {
                 Err("NYI: tuple/scalar arithmetic".to_string())
-            }
-            (Value::Tuple(_), Value::Tuple(_)) => {
-                Err("Illegal Operation: tuple/tuple arithmetic".to_string())
             }
             (Value::Tuple(_), Value::Matrix(_)) | (Value::Matrix(_), Value::Tuple(_)) => {
                 Err("Illegal Operation: tuple/matrix arithmetic".to_string())
@@ -1851,15 +1945,6 @@ mod test {
     }
 
     #[test]
-    fn scalar_trunc() {
-        let a: Scalar = rug::Float::with_val(FLOAT_PRECISION, 1.5).into();
-        let b: Scalar = rug::Float::with_val(FLOAT_PRECISION, -1.5).into();
-
-        assert_eq!(a.trunc(), Ok(Scalar::one()));
-        assert_eq!(b.trunc(), Ok(-Scalar::one()));
-    }
-
-    #[test]
     fn value_get_usize_some() {
         let a = Value::from(Scalar::from(rug::Rational::from((5, 1))));
         assert_eq!(a.get_usize(), Some(5));
@@ -2136,5 +2221,25 @@ mod test {
 
         assert_eq!(b.clone().mean(), 5.into());
         assert_eq!(b.standard_deviation(), 2.into());
+    }
+
+    #[test]
+    fn value_matrix_roundings() {
+        let a = Value::try_from("[ -4.5 2-5.1i 3/2 ]").unwrap();
+
+        assert_eq!(a.clone().floor(), Value::try_from("[ -5 2-6i 1 ]").unwrap());
+        assert_eq!(a.clone().ceil(), Value::try_from("[ -4 2-5i 2 ]").unwrap());
+        assert_eq!(a.clone().round(), Value::try_from("[ -5 2-5i 2 ]").unwrap());
+        assert_eq!(a.trunc(), Value::try_from("[ -4 2-5i 1 ]").unwrap());
+    }
+
+    #[test]
+    fn value_tuple_roundings() {
+        let a = Value::try_from("( -4.5 2-5.1i 3/2 )").unwrap();
+
+        assert_eq!(a.clone().floor(), Value::try_from("( -5 2-6i 1 )").unwrap());
+        assert_eq!(a.clone().ceil(), Value::try_from("( -4 2-5i 2 )").unwrap());
+        assert_eq!(a.clone().round(), Value::try_from("( -5 2-5i 2 )").unwrap());
+        assert_eq!(a.trunc(), Value::try_from("( -4 2-5i 1 )").unwrap());
     }
 }
