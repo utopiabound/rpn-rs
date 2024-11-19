@@ -15,7 +15,7 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
     style::{Color, Style},
     text::{Span, Text},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
@@ -78,10 +78,10 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
     let chunks = Layout::default()
         .constraints([Constraint::Min(1), Constraint::Length(1)].as_ref())
         .margin(0)
-        .split(f.size());
+        .split(f.area());
     let height = chunks[0].height as usize - info.stack.first().map(|x| x.lines()).unwrap_or(1);
 
-    let data_width = f.size().width - 7;
+    let data_width = f.area().width - 7;
 
     let mut rows = (0..)
         .take(height)
@@ -119,7 +119,7 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
 
     if info.help_popup {
         let block = Block::default().title("Help").borders(Borders::ALL);
-        let area = centered_rect(80, 80, f.size());
+        let area = centered_rect(80, 80, f.area());
         let inner = block.inner(area);
         let text = help_text(inner.width as usize);
         info.help_height = inner.height;
@@ -133,7 +133,10 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
         f.render_widget(block, area);
         f.render_widget(p, inner);
     } else {
-        f.set_cursor(chunks[1].x + info.input.len() as u16, chunks[1].y);
+        f.set_cursor_position(Position::new(
+            chunks[1].x + info.input.len() as u16,
+            chunks[1].y,
+        ));
     }
 }
 

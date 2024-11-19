@@ -28,11 +28,11 @@ fltk = { version = "^1.4", features = ["system-libpng", "system-libjpeg", "syste
 copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 
 # CLI & TUI
-html2text = "0.12"
+html2text = "0.13"
 
 # CLI
-rustyline = "14"
+rustyline = "15"
 
 # (Rata)TUI
-crossterm = "0.27"
-ratatui = "0.26"
+crossterm = "0.28"
+ratatui = "0.29"

@@ -82,4 +82,5 @@ pub trait CalcDisplay {
 
 pub(crate) fn help_text(width: usize) -> String {
     html2text::from_read(HELP_HTML.as_bytes(), width)
+        .unwrap_or_else(|e| format!("Failed to render help: {e}"))
 }

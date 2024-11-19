@@ -13,14 +13,8 @@ jobs:
     steps:
       - run: sudo apt-get install -y libjpeg-dev libpng-dev libpango1.0-dev libxft-dev
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo check --locked
 
   test:
     name: Test Suite
@@ -28,28 +22,18 @@ jobs:
     steps:
       - run: sudo apt-get install -y libjpeg-dev libpng-dev libpango1.0-dev libxft-dev libxinerama-dev libxcursor-dev libxfixes-dev 
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test --all-features --locked
 
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+          components: rustfmt
+      - uses: actions-rust-lang/rustfmt@v1
 
   clippy:
     name: Clippy
@@ -57,14 +41,10 @@ jobs:
     steps:
       - run: sudo apt-get install -y libjpeg-dev libpng-dev libpango1.0-dev libxft-dev
       - uses: actions/checkout@v4
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          override: true
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --locked -- -D warnings
+          components: clippy
+      - run: cargo clippy --locked -- -D warnings
   
   coverage:
     name: Coverage

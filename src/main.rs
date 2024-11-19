@@ -156,7 +156,7 @@ fn main() {
                     "*" => stacks[0].try_binary(|a, b| a * b),
                     "/" => stacks[0].try_binary(|a, b| a / b),
                     "!" => stacks[0].try_unary(|a| a.try_factorial()),
-                    "abs" => stacks[0].try_unary(|a| a.try_abs()),
+                    "abs" | "||" => stacks[0].try_unary(|a| a.try_abs()),
                     "exp" => stacks[0].try_unary(|a| a.try_exp()),
                     "inv" => stacks[0].try_unary(|a| a.inv()),
                     "ln" => stacks[0].try_unary(|a| a.try_ln()),
