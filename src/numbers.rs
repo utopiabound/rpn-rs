@@ -883,22 +883,6 @@ impl Value {
         self.pow(other.inv()?)
     }
 
-    pub fn try_rshift(&self, b: &Value) -> Result<Self, String> {
-        match (self, b.get_usize()) {
-            (Value::Scalar(Scalar::Int(a)), Some(b)) => Ok(Value::from(a.clone() >> b)),
-            (Value::Scalar(Scalar::Float(a)), Some(b)) => Ok(Value::from(a.clone() >> b)),
-            _ => Err(format!("{self:?} >> {b:?} is not REAL >> INTEGER(u32)")),
-        }
-    }
-
-    pub fn try_lshift(&self, b: &Value) -> Result<Self, String> {
-        match (self, b.get_usize()) {
-            (Value::Scalar(Scalar::Int(a)), Some(b)) => Ok(Value::from(a.clone() << b)),
-            (Value::Scalar(Scalar::Float(a)), Some(b)) => Ok(Value::from(a.clone() << b)),
-            _ => Err(format!("{self:?} << {b:?} is not REAL << INTEGER(u32)")),
-        }
-    }
-
     pub fn try_ln(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.ln())),
@@ -1295,6 +1279,42 @@ impl ops::Add<Value> for Value {
     }
 }
 
+impl ops::BitAnd<Value> for Value {
+    type Output = Result<Value, String>;
+
+    fn bitand(self, other: Self) -> Self::Output {
+        if let (Value::Scalar(a), Value::Scalar(b)) = (self, other) {
+            (a & b).map(Value::Scalar)
+        } else {
+            Err("NYI".to_string())
+        }
+    }
+}
+
+impl ops::BitOr<Value> for Value {
+    type Output = Result<Value, String>;
+
+    fn bitor(self, other: Self) -> Self::Output {
+        if let (Value::Scalar(a), Value::Scalar(b)) = (self, other) {
+            (a | b).map(Value::Scalar)
+        } else {
+            Err("NYI".to_string())
+        }
+    }
+}
+
+impl ops::BitXor<Value> for Value {
+    type Output = Result<Value, String>;
+
+    fn bitxor(self, other: Self) -> Self::Output {
+        if let (Value::Scalar(a), Value::Scalar(b)) = (self, other) {
+            (a ^ b).map(Value::Scalar)
+        } else {
+            Err("NYI".to_string())
+        }
+    }
+}
+
 impl ops::Div<Value> for Value {
     type Output = Result<Value, String>;
 
@@ -1456,6 +1476,30 @@ impl ops::Rem for Value {
     }
 }
 
+impl ops::Shl<Value> for Value {
+    type Output = Result<Self, String>;
+
+    fn shl(self, other: Self) -> Self::Output {
+        match (self, other.get_usize()) {
+            (Value::Scalar(Scalar::Int(a)), Some(b)) => Ok(Value::from(a.clone() << b)),
+            (Value::Scalar(Scalar::Float(a)), Some(b)) => Ok(Value::from(a.clone() << b)),
+            (a, _) => Err(format!("{a:?} << {other:?} is not REAL << INTEGER(u32)")),
+        }
+    }
+}
+
+impl ops::Shr<Value> for Value {
+    type Output = Result<Self, String>;
+
+    fn shr(self, other: Self) -> Self::Output {
+        match (self, other.get_usize()) {
+            (Value::Scalar(Scalar::Int(a)), Some(b)) => Ok(Value::from(a.clone() >> b)),
+            (Value::Scalar(Scalar::Float(a)), Some(b)) => Ok(Value::from(a.clone() >> b)),
+            (a, _) => Err(format!("{a:?} >> {other:?} is not REAL >> INTEGER(u32)")),
+        }
+    }
+}
+
 impl ops::Sub<Value> for Value {
     type Output = Result<Self, String>;
 
@@ -1523,6 +1567,54 @@ impl ops::AddAssign<Scalar> for Scalar {
             (Scalar::Complex(a), Scalar::Float(b)) => Scalar::from(a + b),
             (Scalar::Complex(a), Scalar::Complex(b)) => Scalar::from(a + b),
         };
+    }
+}
+
+impl ops::BitAnd<Scalar> for Scalar {
+    type Output = Result<Scalar, String>;
+
+    fn bitand(self, other: Self) -> Self::Output {
+        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other) {
+            if a.is_integer() && b.is_integer() {
+                Ok(Scalar::from(a.numer().clone() & b.numer().clone()))
+            } else {
+                Err("Not supported".to_string())
+            }
+        } else {
+            Err("Not supported".to_string())
+        }
+    }
+}
+
+impl ops::BitOr<Scalar> for Scalar {
+    type Output = Result<Scalar, String>;
+
+    fn bitor(self, other: Self) -> Self::Output {
+        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other) {
+            if a.is_integer() && b.is_integer() {
+                Ok(Scalar::from(a.numer().clone() | b.numer().clone()))
+            } else {
+                Err("Not supported".to_string())
+            }
+        } else {
+            Err("Not supported".to_string())
+        }
+    }
+}
+
+impl ops::BitXor<Scalar> for Scalar {
+    type Output = Result<Scalar, String>;
+
+    fn bitxor(self, other: Self) -> Self::Output {
+        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other) {
+            if a.is_integer() && b.is_integer() {
+                Ok(Scalar::from(a.numer().clone() ^ b.numer().clone()))
+            } else {
+                Err("Not supported".to_string())
+            }
+        } else {
+            Err("Not supported".to_string())
+        }
     }
 }
 

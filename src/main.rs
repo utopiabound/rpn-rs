@@ -197,10 +197,14 @@ fn main() {
                     "I" | "ident" | "identity" => stacks[0].try_unary(Value::identity),
                     "J" | "ones" => stacks[0].try_unary(Value::ones),
                     "rref" => stacks[0].try_unary(|a| a.try_rref()),
+
                     // Binary Operations
-                    "<<" | "lshift" => stacks[0].try_binary(|a, b| a.try_lshift(&b)),
-                    ">>" | "rshift" => stacks[0].try_binary(|a, b| a.try_rshift(&b)),
-                    // or, and, xor, nand
+                    "<<" | "lshift" => stacks[0].try_binary(|a, b| a << b),
+                    ">>" | "rshift" => stacks[0].try_binary(|a, b| a >> b),
+                    "&" | "and" => stacks[0].try_binary(|a, b| a & b),
+                    "|" | "or" => stacks[0].try_binary(|a, b| a | b),
+                    "xor" => stacks[0].try_binary(|a, b| a ^ b),
+
                     // Constants
                     "e" => {
                         stacks[0].push(Value::e());
