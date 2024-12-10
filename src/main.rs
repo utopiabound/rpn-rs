@@ -23,6 +23,10 @@ struct App {
     #[clap(short, long, short_alias = 'u', default_value_t)]
     /// Type of `UI` to display
     flavor: Flavor,
+
+    /// Show in-app help
+    #[clap(long)]
+    show_help: bool,
 }
 
 fn handle_err(flavor: Flavor, e: impl std::fmt::Display) -> ! {
@@ -34,6 +38,11 @@ fn main() {
     let stack_undo = 10;
 
     let cmd = App::parse();
+
+    if cmd.show_help {
+        println!("{}", ui::help_text(80));
+        return;
+    }
 
     let mut ui = match ui::get_ui(cmd.flavor) {
         Ok(x) => x,
