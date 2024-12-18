@@ -21,9 +21,9 @@ strum_macros = "0.26"
 
 # GUI
 # Use this line to just build with fltk statically
-#fltk = "^1.4"
+#fltk = "^1.5"
 # Use system libs for zlib, png and jpeg
-fltk = { version = "^1.4", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
+fltk = { version = "^1.5", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
 # Disable wayland as it fails codecov checks
 copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 
