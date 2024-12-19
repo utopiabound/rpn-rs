@@ -19,6 +19,7 @@ use std::{collections::VecDeque, ops::Neg as _};
 
 #[derive(Parser, Debug)]
 /// RPN Calculator
+#[command(version)]
 struct App {
     #[clap(short, long, short_alias = 'u', default_value_t)]
     /// Type of `UI` to display
