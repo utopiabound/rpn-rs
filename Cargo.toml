@@ -10,7 +10,7 @@ readme = "README.md"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "wrap_help"] }
-itertools = "0.13"
+itertools = "0.14"
 #libmat = "0.3"
 libmat = { git = "https://github.com/utopiabound/libmat", branch = "rref" }
 log = "0.4"
@@ -21,9 +21,9 @@ strum_macros = "0.26"
 
 # GUI
 # Use this line to just build with fltk statically
-#fltk = "^1.5"
+fltk = "^1.5"
 # Use system libs for zlib, png and jpeg
-fltk = { version = "^1.5", features = ["system-libpng", "system-libjpeg", "system-zlib"] }
+#fltk = { version = "^1.5", features = ["system-zlib", "use-ninja"] }
 # Disable wayland as it fails codecov checks
 copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 

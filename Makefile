@@ -21,7 +21,7 @@ target/release/rpn-rs: src/*.rs src/fixtures/help.html Cargo.*
 
 rpn-rs.app: all
 	mkdir -p rpn-rs.app/Contents/Resources/
-	mkdir rpn-rs.app/Contents/MacOS/
+	mkdir -p rpn-rs.app/Contents/MacOS/
 	cp desktop/rpn-rs.icns rpn-rs.app/Contents/Resources/
 	cp desktop/Info.plist rpn-rs.app/Contents/
 	cp target/release/rpn-rs rpn-rs.app/Contents/MacOS/
