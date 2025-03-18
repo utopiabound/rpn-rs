@@ -10,7 +10,7 @@ use crate::{
 
 use rustyline::{error::ReadlineError, DefaultEditor};
 
-pub struct ReadlineCalcUI {
+pub(crate) struct ReadlineCalcUI {
     radix: Radix,
     rational: bool,
     editor: DefaultEditor,

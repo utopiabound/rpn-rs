@@ -21,14 +21,14 @@ use std::{
 const FLOAT_PRECISION: u32 = 256;
 
 #[derive(Debug, Clone)]
-pub enum Scalar {
+pub(crate) enum Scalar {
     Int(Rational),
     Float(Float),
     Complex(Complex),
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Value {
+pub(crate) enum Value {
     Scalar(Scalar),
     Tuple(VecDeque<Scalar>),
     Matrix(Matrix<Scalar>),
@@ -215,7 +215,7 @@ impl RpnToStringScalar for Rational {
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
-pub enum Radix {
+pub(crate) enum Radix {
     #[default]
     Decimal,
     Hex,
@@ -224,7 +224,7 @@ pub enum Radix {
 }
 
 impl Radix {
-    pub fn prefix(&self) -> &str {
+    pub(crate) fn prefix(&self) -> &str {
         match self {
             Radix::Decimal => "",
             Radix::Hex => "0x",
@@ -232,7 +232,7 @@ impl Radix {
             Radix::Octal => "0o",
         }
     }
-    pub fn from_prefix(val: &str) -> Self {
+    pub(crate) fn from_prefix(val: &str) -> Self {
         match val.to_lowercase().as_str() {
             "0b" | "b" => Self::Binary,
             "0o" | "o" => Self::Octal,
@@ -243,7 +243,7 @@ impl Radix {
     }
 
     // (is_neg, Radix, rest_of_string)
-    pub fn split_string(value: &str) -> (bool, Self, String) {
+    pub(crate) fn split_string(value: &str) -> (bool, Self, String) {
         let re = Regex::new(r"^(-)?(0[xXoObBdD])?(.*)").unwrap();
         let value = value.trim_start_matches('+');
         if let Some(caps) = re.captures(value) {
@@ -447,7 +447,7 @@ impl Num for Scalar {
 
 impl Scalar {
     /// Exponent (`e^x`)
-    pub fn exp(self) -> Self {
+    pub(crate) fn exp(self) -> Self {
         match self {
             Scalar::Int(x) => Scalar::from(Float::with_val(FLOAT_PRECISION, x).exp()),
             Scalar::Float(x) => Scalar::from(x.exp()),
@@ -456,7 +456,7 @@ impl Scalar {
     }
 
     /// Natural Logarithm
-    pub fn ln(self) -> Self {
+    pub(crate) fn ln(self) -> Self {
         match self {
             Scalar::Int(x) => Scalar::from(Float::with_val(FLOAT_PRECISION, x).ln()),
             Scalar::Float(x) => Scalar::from(x.ln()),
@@ -465,7 +465,7 @@ impl Scalar {
     }
 
     /// Logarithm (base 10)
-    pub fn log10(self) -> Self {
+    pub(crate) fn log10(self) -> Self {
         match self {
             Scalar::Int(x) => Scalar::from(Float::with_val(FLOAT_PRECISION, x).log10()),
             Scalar::Float(x) => Scalar::from(x.log10()),
@@ -474,7 +474,7 @@ impl Scalar {
     }
 
     /// Logarithm (base 2)
-    pub fn try_log2(self) -> Result<Self, String> {
+    pub(crate) fn try_log2(self) -> Result<Self, String> {
         match self {
             Scalar::Int(x) => Ok(Scalar::from(Float::with_val(FLOAT_PRECISION, x).log2())),
             Scalar::Float(x) => Ok(Scalar::from(x.log2())),
@@ -484,7 +484,7 @@ impl Scalar {
     }
 
     /// Factorial (`n!`)
-    pub fn try_factorial(self) -> Result<Self, String> {
+    pub(crate) fn try_factorial(self) -> Result<Self, String> {
         match self {
             Scalar::Int(x) if x.is_integer() => x.numer().factorial().map(|x| x.into()),
             _ => Err("n! only implemented for integers".to_string()),
@@ -493,7 +493,7 @@ impl Scalar {
 
     /// Permutation (`nPm`)
     /// `P(n, m) = n! / (n - m)!`
-    pub fn try_permute(self, r: Self) -> Result<Self, String> {
+    pub(crate) fn try_permute(self, r: Self) -> Result<Self, String> {
         if self < r {
             return Err("P(n, m) only valid for n < m".to_string());
         }
@@ -522,7 +522,7 @@ impl Scalar {
 
     /// Combination (`nCm`)
     /// `C(n, m) = n! / m!(n - m)!`
-    pub fn try_choose(self, r: Self) -> Result<Self, String> {
+    pub(crate) fn try_choose(self, r: Self) -> Result<Self, String> {
         if self < r {
             return Err("C(n, m) only valid for n < m".to_string());
         }
@@ -550,7 +550,7 @@ impl Scalar {
     }
 
     /// Factor Integer
-    pub fn factor(self) -> Result<Vec<Self>, String> {
+    pub(crate) fn factor(self) -> Result<Vec<Self>, String> {
         match self {
             Scalar::Int(x) => {
                 if x < 0 {
@@ -580,7 +580,7 @@ impl Scalar {
     }
 
     /// Floor
-    pub fn floor(self) -> Self {
+    pub(crate) fn floor(self) -> Self {
         match self {
             Scalar::Int(x) => x.floor().into(),
             Scalar::Float(x) => x.floor().into(),
@@ -591,7 +591,7 @@ impl Scalar {
     }
 
     /// Floor
-    pub fn ceil(self) -> Self {
+    pub(crate) fn ceil(self) -> Self {
         match self {
             Scalar::Int(x) => x.ceil().into(),
             Scalar::Float(x) => x.ceil().into(),
@@ -602,7 +602,7 @@ impl Scalar {
     }
 
     /// Truncate to Integer
-    pub fn trunc(self) -> Self {
+    pub(crate) fn trunc(self) -> Self {
         match self {
             Scalar::Int(x) => x.trunc().into(),
             Scalar::Float(x) => x.trunc().into(),
@@ -613,7 +613,7 @@ impl Scalar {
     }
 
     /// Round to nearest Integer
-    pub fn round(self) -> Self {
+    pub(crate) fn round(self) -> Self {
         match self {
             Scalar::Int(x) => x.round().into(),
             Scalar::Float(x) => x.round().into(),
@@ -670,7 +670,12 @@ impl Scalar {
     }
 
     // @@ Floats don't get exactly the right length
-    pub fn to_string_radix(&self, radix: Radix, rational: bool, width: Option<usize>) -> String {
+    pub(crate) fn to_string_radix(
+        &self,
+        radix: Radix,
+        rational: bool,
+        width: Option<usize>,
+    ) -> String {
         //eprintln!("{self:?} digits:{digits:?}");
         match self {
             Scalar::Int(x) => {
@@ -760,7 +765,7 @@ impl Value {
         }
     }
 
-    pub fn is_zero(&self) -> bool {
+    pub(crate) fn is_zero(&self) -> bool {
         match self {
             Value::Scalar(x) => x.is_zero(),
             Value::Tuple(x) => x.is_empty(),
@@ -777,11 +782,11 @@ impl Value {
         }
     }
 
-    pub fn try_sqrt(self) -> Result<Self, String> {
+    pub(crate) fn try_sqrt(self) -> Result<Self, String> {
         self.try_root(2.into())
     }
 
-    pub fn to_string_radix(
+    pub(crate) fn to_string_radix(
         &self,
         radix: Radix,
         rational: bool,
@@ -822,7 +827,7 @@ impl Value {
         }
     }
 
-    pub fn lines(&self) -> usize {
+    pub(crate) fn lines(&self) -> usize {
         match self {
             Value::Scalar(_) => 1,
             Value::Tuple(_) => 1, // FIXME: wrap?
@@ -830,7 +835,7 @@ impl Value {
         }
     }
 
-    pub fn try_factor(self) -> Result<Value, String> {
+    pub(crate) fn try_factor(self) -> Result<Value, String> {
         match self {
             Value::Scalar(x) => x.factor().map(|x| x.into()),
             Value::Tuple(_) => Err("Factoring Tuple not supported".to_string()),
@@ -838,28 +843,28 @@ impl Value {
         }
     }
 
-    pub fn try_factorial(self) -> Result<Value, String> {
+    pub(crate) fn try_factorial(self) -> Result<Value, String> {
         match self {
             Value::Scalar(x) => Ok(x.try_factorial()?.into()),
             _ => Err(format!("{self:?}! is not INT!")),
         }
     }
 
-    pub fn try_permute(self, r: Self) -> Result<Value, String> {
+    pub(crate) fn try_permute(self, r: Self) -> Result<Value, String> {
         match (self, r) {
             (Value::Scalar(x), Value::Scalar(r)) => Ok(x.try_permute(r)?.into()),
             _ => Err("Permuation only implement for INT P INT".to_string()),
         }
     }
 
-    pub fn try_choose(self, r: Self) -> Result<Value, String> {
+    pub(crate) fn try_choose(self, r: Self) -> Result<Value, String> {
         match (self, r) {
             (Value::Scalar(x), Value::Scalar(r)) => Ok(x.try_choose(r)?.into()),
             _ => Err("Combination only implement for INT C INT".to_string()),
         }
     }
 
-    pub fn try_modulo(&self, b: &Value) -> Result<Value, String> {
+    pub(crate) fn try_modulo(&self, b: &Value) -> Result<Value, String> {
         match (self, b) {
             (_, b) if b.is_zero() => Err("Modulo by zero".to_string()),
             (_, Value::Matrix(_)) => Err("Modulo by Matrix".to_string()),
@@ -879,25 +884,25 @@ impl Value {
         }
     }
 
-    pub fn try_root(self, other: Value) -> Result<Self, String> {
+    pub(crate) fn try_root(self, other: Value) -> Result<Self, String> {
         self.pow(other.inv()?)
     }
 
-    pub fn try_ln(self) -> Result<Self, String> {
+    pub(crate) fn try_ln(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.ln())),
             _ => Err("NYI".to_string()),
         }
     }
 
-    pub fn try_abs(self) -> Result<Self, String> {
+    pub(crate) fn try_abs(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.abs())),
             _ => Err("NYI".to_string()),
         }
     }
 
-    pub fn try_exp(self) -> Result<Self, String> {
+    pub(crate) fn try_exp(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.exp())),
             Value::Tuple(_) => Err("NYI".to_string()),
@@ -905,7 +910,7 @@ impl Value {
         }
     }
 
-    pub fn try_log10(self) -> Result<Self, String> {
+    pub(crate) fn try_log10(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.log10())),
             Value::Tuple(_) => Err("NYI".to_string()),
@@ -913,7 +918,7 @@ impl Value {
         }
     }
 
-    pub fn try_log2(self) -> Result<Self, String> {
+    pub(crate) fn try_log2(self) -> Result<Self, String> {
         match self {
             Value::Scalar(x) => Ok(Value::Scalar(x.try_log2()?)),
             Value::Tuple(_) => Err("NYI".to_string()),
@@ -921,7 +926,7 @@ impl Value {
         }
     }
 
-    pub fn try_dms_conv(&self) -> Result<Self, String> {
+    pub(crate) fn try_dms_conv(&self) -> Result<Self, String> {
         match &self {
             Value::Scalar(x) => {
                 let mut m = vec![Scalar::zero(), Scalar::zero(), Scalar::zero()];
@@ -954,7 +959,7 @@ impl Value {
     }
 
     /// Truncate values to Integer
-    pub fn trunc(self) -> Self {
+    pub(crate) fn trunc(self) -> Self {
         match self {
             Value::Scalar(x) => x.trunc().into(),
             Value::Tuple(x) => x.into_iter().map(|x| x.trunc()).collect::<Vec<_>>().into(),
@@ -971,7 +976,7 @@ impl Value {
     }
 
     /// Truncate values to Integer
-    pub fn floor(self) -> Self {
+    pub(crate) fn floor(self) -> Self {
         match self {
             Value::Scalar(x) => x.floor().into(),
             Value::Tuple(x) => x.into_iter().map(|x| x.floor()).collect::<Vec<_>>().into(),
@@ -988,7 +993,7 @@ impl Value {
     }
 
     /// Truncate values to Integer
-    pub fn ceil(self) -> Self {
+    pub(crate) fn ceil(self) -> Self {
         match self {
             Value::Scalar(x) => x.ceil().into(),
             Value::Tuple(x) => x.into_iter().map(|x| x.ceil()).collect::<Vec<_>>().into(),
@@ -1005,7 +1010,7 @@ impl Value {
     }
 
     /// Round values to Integer
-    pub fn round(self) -> Self {
+    pub(crate) fn round(self) -> Self {
         match self {
             Value::Scalar(x) => x.round().into(),
             Value::Tuple(x) => x.into_iter().map(|x| x.round()).collect::<Vec<_>>().into(),
@@ -1022,7 +1027,7 @@ impl Value {
     }
 
     // Tuple Functions
-    pub fn try_push(self, b: Self) -> Result<Self, String> {
+    pub(crate) fn try_push(self, b: Self) -> Result<Self, String> {
         match (self, b) {
             (Value::Scalar(s), Value::Tuple(mut t)) => {
                 t.push_front(s);
@@ -1043,7 +1048,7 @@ impl Value {
         }
     }
 
-    pub fn try_unpush(self) -> Result<Vec<Self>, String> {
+    pub(crate) fn try_unpush(self) -> Result<Vec<Self>, String> {
         match self {
             Value::Scalar(_) => Err("Illegal Operation: unpush of scalar".to_string()),
             Value::Tuple(mut t) => {
@@ -1057,7 +1062,7 @@ impl Value {
         }
     }
 
-    pub fn try_pull(self) -> Result<Vec<Self>, String> {
+    pub(crate) fn try_pull(self) -> Result<Vec<Self>, String> {
         match self {
             Value::Scalar(s) => Ok(vec![Value::Scalar(s)]),
             Value::Tuple(mut t) => {
@@ -1071,7 +1076,7 @@ impl Value {
         }
     }
 
-    pub fn try_expand(self) -> Result<Vec<Self>, String> {
+    pub(crate) fn try_expand(self) -> Result<Vec<Self>, String> {
         match self {
             Value::Scalar(s) => Ok(vec![Value::Scalar(s)]),
             Value::Tuple(t) => Ok(t.into_iter().rev().map(Value::Scalar).collect()),
@@ -1082,7 +1087,7 @@ impl Value {
         }
     }
 
-    pub fn sum(self) -> Self {
+    pub(crate) fn sum(self) -> Self {
         match self {
             Value::Scalar(s) => Value::Scalar(s),
             Value::Tuple(t) => Value::Scalar(t.into_iter().sum()),
@@ -1090,7 +1095,7 @@ impl Value {
         }
     }
 
-    pub fn product(self) -> Self {
+    pub(crate) fn product(self) -> Self {
         match self {
             Value::Scalar(s) => Value::Scalar(s),
             Value::Tuple(t) => Value::Scalar(t.into_iter().product()),
@@ -1099,7 +1104,7 @@ impl Value {
     }
 
     // Stats Functions
-    pub fn mean(self) -> Self {
+    pub(crate) fn mean(self) -> Self {
         match self {
             Value::Scalar(s) => Value::Scalar(s),
             Value::Tuple(t) => {
@@ -1115,7 +1120,7 @@ impl Value {
         }
     }
 
-    pub fn median(self) -> Self {
+    pub(crate) fn median(self) -> Self {
         match self {
             Value::Scalar(s) => Value::Scalar(s),
             Value::Tuple(t) => Value::Scalar(median(t.into_iter().collect())),
@@ -1127,7 +1132,7 @@ impl Value {
         }
     }
 
-    pub fn sort(self) -> Self {
+    pub(crate) fn sort(self) -> Self {
         match self {
             Value::Scalar(s) => Value::Scalar(s),
             Value::Tuple(t) => Value::Tuple(
@@ -1143,7 +1148,7 @@ impl Value {
         }
     }
 
-    pub fn standard_deviation(self) -> Self {
+    pub(crate) fn standard_deviation(self) -> Self {
         match self {
             Value::Scalar(_) => Value::Scalar(Scalar::zero()),
             Value::Tuple(t) => {
@@ -1170,7 +1175,7 @@ impl Value {
     }
 
     // Matrix Only Functions
-    pub fn try_det(self) -> Result<Self, String> {
+    pub(crate) fn try_det(self) -> Result<Self, String> {
         match self {
             Value::Scalar(_) => Err("No determinate for Scalar".to_string()),
             Value::Tuple(_) => Err("No determinate for Tuple".to_string()),
@@ -1178,7 +1183,7 @@ impl Value {
         }
     }
 
-    pub fn try_rref(self) -> Result<Self, String> {
+    pub(crate) fn try_rref(self) -> Result<Self, String> {
         match self {
             Value::Scalar(_) => Err("No determinate for Scalar".to_string()),
             Value::Tuple(_) => Err("No determinate for Tuple".to_string()),
@@ -1186,7 +1191,7 @@ impl Value {
         }
     }
 
-    pub fn try_transpose(self) -> Result<Self, String> {
+    pub(crate) fn try_transpose(self) -> Result<Self, String> {
         match self {
             Value::Scalar(_) => Err("No Transpose for Scalar".to_string()),
             Value::Tuple(t) => Ok(t.into_iter().rev().collect::<VecDeque<_>>().into()),
@@ -1195,7 +1200,7 @@ impl Value {
     }
 
     // Constants
-    pub fn identity(n: Value) -> Result<Self, String> {
+    pub(crate) fn identity(n: Value) -> Result<Self, String> {
         match n {
             Value::Scalar(n) => {
                 if let Some(x) = n.get_usize() {
@@ -1217,7 +1222,7 @@ impl Value {
         }
     }
 
-    pub fn ones(n: Value) -> Result<Self, String> {
+    pub(crate) fn ones(n: Value) -> Result<Self, String> {
         match n {
             Value::Scalar(n) => {
                 if let Some(x) = n.get_usize() {
@@ -1235,20 +1240,20 @@ impl Value {
         }
     }
 
-    pub fn e() -> Self {
+    pub(crate) fn e() -> Self {
         let f = Float::with_val(FLOAT_PRECISION, 1);
         Value::Scalar(Scalar::from(f.exp()))
     }
-    pub fn pi() -> Self {
+    pub(crate) fn pi() -> Self {
         Value::Scalar(Scalar::from(Float::with_val(FLOAT_PRECISION, Constant::Pi)))
     }
-    pub fn catalan() -> Self {
+    pub(crate) fn catalan() -> Self {
         Value::Scalar(Scalar::from(Float::with_val(
             FLOAT_PRECISION,
             Constant::Catalan,
         )))
     }
-    pub fn avagadro() -> Self {
+    pub(crate) fn avagadro() -> Self {
         let r: Scalar = Rational::from((602_214_076, 1)).into();
         let ten: Scalar = Rational::from((10, 1)).into();
         let ex: Scalar = Rational::from((23, 1)).into();

@@ -26,6 +26,10 @@ rpn-rs.app: all
 	cp desktop/Info.plist rpn-rs.app/Contents/
 	cp target/release/rpn-rs rpn-rs.app/Contents/MacOS/
 
+check:
+	cargo fmt --all
+	cargo clippy --all-targets -- -Dunreachable-pub -Dwarnings
+
 clean:
 	rm -rf rpn-rs.app/
 

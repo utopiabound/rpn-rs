@@ -6,9 +6,9 @@
 use crate::numbers::{Radix, Value};
 use std::error::Error;
 
-pub mod fltk;
-pub mod readline;
-pub mod tui;
+pub(crate) mod fltk;
+pub(crate) mod readline;
+pub(crate) mod tui;
 
 pub(crate) const HELP_HTML: &str = include_str!("fixtures/help.html");
 
@@ -23,7 +23,7 @@ pub(crate) fn about_txt() -> String {
 #[derive(clap::ValueEnum, Default, Debug, Copy, Clone, strum_macros::Display, PartialEq)]
 #[clap(rename_all = "lower")]
 #[strum(serialize_all = "lowercase")]
-pub enum Flavor {
+pub(crate) enum Flavor {
     /// Graphical User Interface
     #[default]
     Gui,
@@ -33,7 +33,7 @@ pub enum Flavor {
     Tui,
 }
 
-pub fn get_ui(flavor: Flavor) -> Result<Box<dyn CalcDisplay>, Box<dyn Error + Send + Sync>> {
+pub(crate) fn get_ui(flavor: Flavor) -> Result<Box<dyn CalcDisplay>, Box<dyn Error + Send + Sync>> {
     match flavor {
         Flavor::Gui => Ok(Box::new(fltk::FltkCalcDisplay::init()?)),
         Flavor::Cli => Ok(Box::new(readline::ReadlineCalcUI::init()?)),
@@ -42,13 +42,13 @@ pub fn get_ui(flavor: Flavor) -> Result<Box<dyn CalcDisplay>, Box<dyn Error + Se
 }
 
 #[derive(Debug, Clone)]
-pub enum Message {
+pub(crate) enum Message {
     Clear,
     Drop,
     Input(String),
 }
 
-pub trait CalcDisplay {
+pub(crate) trait CalcDisplay {
     /// Initialize Display driver
     fn init() -> Result<Self, Box<dyn Error + Send + Sync>>
     where

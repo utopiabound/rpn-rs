@@ -41,7 +41,7 @@ struct CalcInfo {
     state: TableState,
 }
 
-pub struct TuiCalcUI {
+pub(crate) struct TuiCalcUI {
     info: CalcInfo,
     terminal: Terminal<CrosstermBackend<Stdout>>,
 }

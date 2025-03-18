@@ -39,7 +39,7 @@ enum FltkMessage {
     Quit,
 }
 
-pub struct FltkCalcDisplay {
+pub(crate) struct FltkCalcDisplay {
     app: fltk::app::App,
     table: StackOutput,
     input: Input,
@@ -313,7 +313,7 @@ fn row_count(table_height: i32, lines: i32) -> i32 {
 }
 
 impl StackOutput {
-    pub fn new(width: i32, height: i32) -> Self {
+    pub(crate) fn new(width: i32, height: i32) -> Self {
         let mut table = table::Table::default()
             .with_size(width, height)
             .center_of_parent();
@@ -427,7 +427,7 @@ impl StackOutput {
         }
     }
 
-    pub fn redraw(&mut self) {
+    pub(crate) fn redraw(&mut self) {
         let w = self.table.borrow().width();
         let h = self.table.borrow().height();
         // cause table resize_callback to be called
@@ -450,7 +450,7 @@ impl StackOutput {
         draw::pop_clip();
     }
 
-    pub fn get_selection(&self) -> Result<String, String> {
+    pub(crate) fn get_selection(&self) -> Result<String, String> {
         let (x1, _, _, _) = self.table.borrow().get_selection();
         if x1 < 0 {
             return Err("No Selection".to_string());
@@ -469,21 +469,21 @@ impl StackOutput {
             .ok_or_else(|| "No Selection".to_string())
     }
 
-    pub fn set_data(&mut self, newdata: &[Value]) {
+    pub(crate) fn set_data(&mut self, newdata: &[Value]) {
         let mut data = self.data.borrow_mut();
         data.clear();
         data.extend_from_slice(newdata);
     }
 
-    pub fn set_radix(&mut self, radix: Radix) {
+    pub(crate) fn set_radix(&mut self, radix: Radix) {
         *self.radix.borrow_mut() = radix;
     }
 
-    pub fn set_rational(&mut self, rational: bool) {
+    pub(crate) fn set_rational(&mut self, rational: bool) {
         *self.rational.borrow_mut() = rational;
     }
 
-    pub fn table(&self) -> Rc<RefCell<table::Table>> {
+    pub(crate) fn table(&self) -> Rc<RefCell<table::Table>> {
         self.table.clone()
     }
 }

@@ -5,13 +5,13 @@
 
 use crate::numbers::Value;
 
-pub enum Return {
+pub(crate) enum Return {
     Ok,
     Noop,
     Err(String),
 }
 
-pub trait StackOps {
+pub(crate) trait StackOps {
     fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
     fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     //fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
