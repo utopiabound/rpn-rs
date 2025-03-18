@@ -1248,6 +1248,12 @@ impl Value {
             Constant::Catalan,
         )))
     }
+    pub fn avagadro() -> Self {
+        let r: Scalar = Rational::from((602_214_076, 1)).into();
+        let ten: Scalar = Rational::from((10, 1)).into();
+        let ex: Scalar = Rational::from((23, 1)).into();
+        Value::Scalar(r * ten.pow(ex))
+    }
 }
 
 impl ops::Add<Value> for Value {

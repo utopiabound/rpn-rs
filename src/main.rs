@@ -199,7 +199,7 @@ fn main() {
                     "sort" => stacks[0].unary(|a| a.sort()),
                     "sum" => stacks[0].unary(|a| a.sum()),
                     "prod" | "product" => stacks[0].unary(|a| a.product()),
-                    "sdev" | "sigma" => stacks[0].unary(|a| a.standard_deviation()),
+                    "sd" | "sdev" | "sigma" => stacks[0].unary(|a| a.standard_deviation()),
 
                     // Matrix Operations
                     "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),
@@ -226,6 +226,10 @@ fn main() {
                     }
                     "G" | "catalan" => {
                         stacks[0].push(Value::catalan());
+                        Return::Ok
+                    }
+                    "NA" | "avagadro" => {
+                        stacks[0].push(Value::avagadro());
                         Return::Ok
                     }
                     v => {
