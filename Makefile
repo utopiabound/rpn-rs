@@ -7,7 +7,7 @@ all: target/release/rpn-rs desktop/rpn-rs.icns
 install: target/release/rpn-rs
 	install -m 0755 $< ${BINDIR}/
 	mkdir -p ${ICONDIR}
-	convert -scale 16x16 desktop/rpn-rs.png ${ICONDIR}/rpn-rs.png
+	magick desktop/rpn-rs.png -scale 16x16 ${ICONDIR}/rpn-rs.png
 	mkdir -p ${prefix}/share/pixmaps/
 	install -m 0644 desktop/rpn-rs.png ${prefix}/share/pixmaps/
 	mkdir -p ${prefix}/share/applications/
