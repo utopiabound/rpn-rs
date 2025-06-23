@@ -474,12 +474,41 @@ impl Scalar {
     }
 
     /// Logarithm (base 2)
-    pub(crate) fn try_log2(self) -> Result<Self, String> {
+    pub(crate) fn log2(self) -> Self {
         match self {
-            Scalar::Int(x) => Ok(Scalar::from(Float::with_val(FLOAT_PRECISION, x).log2())),
-            Scalar::Float(x) => Ok(Scalar::from(x.log2())),
-            // mpc is missing a log2() function
-            Scalar::Complex(_) => Err("Log2() not available for Complex Numbers".to_string()),
+            Scalar::Int(x) => Scalar::from(Float::with_val(FLOAT_PRECISION, x).log2()),
+            Scalar::Float(x) => Scalar::from(x.log2()),
+            Scalar::Complex(x) => {
+                Scalar::from(x.log10() / Complex::with_val(FLOAT_PRECISION, (2, 0)).log10())
+            }
+        }
+    }
+
+    /// Logarithm (base N)
+    pub(crate) fn log_n(self, n: Self) -> Self {
+        match (self, n) {
+            (Scalar::Int(a), Scalar::Int(b)) => Scalar::from(
+                Float::with_val(FLOAT_PRECISION, a).log10()
+                    / Float::with_val(FLOAT_PRECISION, b).log10(),
+            ),
+            (Scalar::Int(a), Scalar::Float(b)) => {
+                Scalar::from(Float::with_val(FLOAT_PRECISION, a).log10() / b.log10())
+            }
+            (Scalar::Int(a), Scalar::Complex(b)) => {
+                Scalar::from(Float::with_val(FLOAT_PRECISION, a).log10() / b.log10())
+            }
+
+            (Scalar::Float(a), Scalar::Int(b)) => {
+                Scalar::from(a.log10() / Float::with_val(FLOAT_PRECISION, b).log10())
+            }
+            (Scalar::Float(a), Scalar::Float(b)) => Scalar::from(a.log10() / b.log10()),
+            (Scalar::Float(a), Scalar::Complex(b)) => Scalar::from(a.log10() / b.log10()),
+
+            (Scalar::Complex(a), Scalar::Int(b)) => {
+                Scalar::from(a.log10() / Float::with_val(FLOAT_PRECISION, b).log10())
+            }
+            (Scalar::Complex(a), Scalar::Float(b)) => Scalar::from(a.log10() / b.log10()),
+            (Scalar::Complex(a), Scalar::Complex(b)) => Scalar::from(a.log10() / b.log10()),
         }
     }
 
@@ -920,9 +949,17 @@ impl Value {
 
     pub(crate) fn try_log2(self) -> Result<Self, String> {
         match self {
-            Value::Scalar(x) => Ok(Value::Scalar(x.try_log2()?)),
+            Value::Scalar(x) => Ok(Value::Scalar(x.log2())),
             Value::Tuple(_) => Err("NYI".to_string()),
             Value::Matrix(_) => Err("NYI".to_string()),
+        }
+    }
+
+    pub(crate) fn try_log_n(self, other: Self) -> Result<Self, String> {
+        if let (Value::Scalar(x), Value::Scalar(y)) = (self, other) {
+            Ok(Value::Scalar(x.log_n(y)))
+        } else {
+            Err("NYI".to_string())
         }
     }
 

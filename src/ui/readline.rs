@@ -8,7 +8,10 @@ use crate::{
     ui::{about_txt, help_text, CalcDisplay, Message},
 };
 
-use rustyline::{error::ReadlineError, DefaultEditor};
+use rustyline::{
+    error::{ReadlineError, Signal},
+    DefaultEditor,
+};
 
 pub(crate) struct ReadlineCalcUI {
     radix: Radix,
@@ -63,8 +66,10 @@ impl CalcDisplay for ReadlineCalcUI {
 
             match readline {
                 Ok(line) => return Some(Message::Input(line)),
-                Err(ReadlineError::Eof) | Err(ReadlineError::Interrupted) => break,
-                Err(ReadlineError::WindowResized) => {} // redraw
+                Err(ReadlineError::Eof)
+                | Err(ReadlineError::Interrupted)
+                | Err(ReadlineError::Signal(Signal::Interrupt)) => break,
+                Err(ReadlineError::Signal(Signal::Resize)) => {} // redraw
                 Err(e) => {
                     self.set_error(Some(e.to_string()));
                     continue;

@@ -21,18 +21,18 @@ strum_macros = "0.27"
 
 # GUI
 # Use this line to just build with fltk statically
-fltk = "^1.5"
+fltk = { version = "^1.5", features = ["fltk-bundled"] }
 # Use system libs for zlib, png and jpeg
 #fltk = { version = "^1.5", features = ["system-zlib", "use-ninja"] }
 # Disable wayland as it fails codecov checks
 copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 
 # CLI & TUI
-html2text = "0.14"
+html2text = "0.15"
 
 # CLI
-rustyline = "15"
+rustyline = "16"
 
 # (Rata)TUI
-crossterm = "0.28"
+crossterm = "0.29"
 ratatui = "0.29"

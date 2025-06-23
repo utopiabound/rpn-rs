@@ -170,8 +170,11 @@ fn main() {
                     "exp" => stacks[0].try_unary(|a| a.try_exp()),
                     "inv" => stacks[0].try_unary(|a| a.inv()),
                     "ln" => stacks[0].try_unary(|a| a.try_ln()),
-                    "log" | "log10" => stacks[0].try_unary(|a| a.try_log10()),
-                    "log2" => stacks[0].try_unary(|a| a.try_log2()),
+                    // lg is ISO notation
+                    "lg" | "log" | "log10" => stacks[0].try_unary(|a| a.try_log10()),
+                    // lb is ISO notation
+                    "lb" | "log2" => stacks[0].try_unary(|a| a.try_log2()),
+                    "logb" | "logn" | "logN" => stacks[0].try_binary(|a, b| a.try_log_n(b)),
                     "neg" => stacks[0].unary(|a| a.neg()),
                     "mod" => stacks[0].try_binary(|a, b| a.try_modulo(&b)),
                     "%" | "rem" => stacks[0].try_binary(|a, b| a % b),
