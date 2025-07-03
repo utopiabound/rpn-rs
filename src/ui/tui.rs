@@ -5,7 +5,7 @@
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{about_txt, help_text, CalcDisplay, Message},
+    ui::{about_txt, help_text, CalcDisplay, Info, Message},
 };
 
 use crossterm::{
@@ -29,8 +29,7 @@ struct CalcInfo {
     stack: Vec<Value>,
     error: Option<String>,
     input: String,
-    radix: Radix,
-    rational: bool,
+    info: Info,
     help_popup: bool,
     // location of scroll in help text
     help_scroll: u16,
@@ -91,8 +90,8 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
                 .get(x)
                 .map(|num| {
                     Text::from(num.to_string_radix(
-                        info.radix,
-                        info.rational,
+                        info.info.radix,
+                        info.info.rational,
                         x != 0,
                         (data_width - 1) as usize,
                     ))
@@ -108,6 +107,7 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
 
     let widths = [Constraint::Length(6), Constraint::Length(data_width)];
     let t = Table::new(rows, widths)
+        // @@ INFO LINE with Angel
         .block(Block::default().borders(Borders::NONE).title(Span::styled(
             info.error.clone().unwrap_or_default(),
             Style::default().fg(Color::Red),
@@ -151,10 +151,7 @@ impl CalcDisplay for TuiCalcUI {
         let terminal = Terminal::new(backend)?;
 
         Ok(Self {
-            info: CalcInfo {
-                rational: true,
-                ..Default::default()
-            },
+            info: CalcInfo::default(),
             terminal,
         })
     }
@@ -251,6 +248,7 @@ impl CalcDisplay for TuiCalcUI {
                     } else {
                         match kcode {
                             KeyCode::Char(c) if k.modifiers.contains(KeyModifiers::CONTROL) => {
+                                let mut info = self.get_info();
                                 match c {
                                     'l' => {
                                         self.info.input = "".to_string();
@@ -258,14 +256,15 @@ impl CalcDisplay for TuiCalcUI {
                                     }
                                     'p' => return Some(Message::Drop),
                                     'q' => return Some(Message::Input("quit".to_string())),
-                                    'd' => self.set_display(Some(Radix::Decimal), None),
-                                    'x' => self.set_display(Some(Radix::Hex), None),
-                                    'b' => self.set_display(Some(Radix::Binary), None),
-                                    'o' => self.set_display(Some(Radix::Octal), None),
-                                    'r' => self.set_display(None, Some(!self.info.rational)),
+                                    'd' => info.radix = Radix::Decimal,
+                                    'x' => info.radix = Radix::Hex,
+                                    'b' => info.radix = Radix::Binary,
+                                    'o' => info.radix = Radix::Octal,
+                                    'r' => info.rational = !info.rational,
                                     'h' => return Some(Message::Input("help".to_string())),
                                     c => self.info.error = Some(format!("Unknown hotkey: ^{c}")),
                                 }
+                                self.set_info(info);
                             }
                             KeyCode::Char(c) => self.info.input.push(c),
                             KeyCode::Enter => {
@@ -310,13 +309,12 @@ impl CalcDisplay for TuiCalcUI {
         self.info.stack = data.to_vec();
     }
 
-    fn set_display(&mut self, radix: Option<Radix>, rational: Option<bool>) {
-        if let Some(rdx) = radix {
-            self.info.radix = rdx;
-        }
-        if let Some(rational) = rational {
-            self.info.rational = rational;
-        }
+    fn set_info(&mut self, info: Info) {
+        self.info.info = info;
+    }
+
+    fn get_info(&self) -> Info {
+        self.info.info
     }
 
     fn about(&mut self) {

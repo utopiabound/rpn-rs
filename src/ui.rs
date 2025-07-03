@@ -3,7 +3,7 @@
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
 
-use crate::numbers::{Radix, Value};
+use crate::numbers::{Angle, Radix, Value};
 use std::error::Error;
 
 pub(crate) mod fltk;
@@ -48,6 +48,23 @@ pub(crate) enum Message {
     Input(String),
 }
 
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct Info {
+    pub(crate) radix: Radix,
+    pub(crate) rational: bool,
+    pub(crate) angle: Angle,
+}
+
+impl Default for Info {
+    fn default() -> Self {
+        Self {
+            radix: Radix::default(),
+            rational: true,
+            angle: Angle::default(),
+        }
+    }
+}
+
 pub(crate) trait CalcDisplay {
     /// Initialize Display driver
     fn init() -> Result<Self, Box<dyn Error + Send + Sync>>
@@ -68,7 +85,9 @@ pub(crate) trait CalcDisplay {
 
     fn set_data(&mut self, newdata: &[Value]);
 
-    fn set_display(&mut self, radix: Option<Radix>, rational: Option<bool>);
+    fn set_info(&mut self, info: Info);
+
+    fn get_info(&self) -> Info;
 
     /// Show Help Text
     fn help(&mut self);

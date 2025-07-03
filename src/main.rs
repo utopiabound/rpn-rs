@@ -8,7 +8,7 @@ mod stack;
 mod ui;
 
 use crate::{
-    numbers::{Radix, Value},
+    numbers::{Angle, Radix, Value},
     stack::{Return, StackOps},
     ui::{Flavor, Message},
 };
@@ -125,33 +125,63 @@ fn main() {
                     "dup" | "" => stacks[0].unary_v(|a| vec![a.clone(), a]),
                     // Display Operations
                     "#bin" => {
-                        ui.set_display(Some(Radix::Binary), None);
+                        let mut info = ui.get_info();
+                        info.radix = Radix::Binary;
+                        ui.set_info(info);
                         need_redisplay = true;
                         Return::Noop
                     }
                     "#oct" => {
-                        ui.set_display(Some(Radix::Octal), None);
+                        let mut info = ui.get_info();
+                        info.radix = Radix::Octal;
+                        ui.set_info(info);
                         need_redisplay = true;
                         Return::Noop
                     }
                     "#dec" => {
-                        ui.set_display(Some(Radix::Decimal), None);
+                        let mut info = ui.get_info();
+                        info.radix = Radix::Decimal;
+                        ui.set_info(info);
                         need_redisplay = true;
                         Return::Noop
                     }
                     "#hex" => {
-                        ui.set_display(Some(Radix::Hex), None);
+                        let mut info = ui.get_info();
+                        info.radix = Radix::Hex;
+                        ui.set_info(info);
                         need_redisplay = true;
                         Return::Noop
                     }
                     "#real" | "#R" => {
-                        ui.set_display(None, Some(false));
+                        let mut info = ui.get_info();
+                        info.rational = false;
+                        ui.set_info(info);
                         need_redisplay = true;
                         Return::Noop
                     }
                     "#rational" | "#rat" | "#Q" => {
-                        ui.set_display(None, Some(true));
+                        let mut info = ui.get_info();
+                        info.rational = true;
+                        ui.set_info(info);
                         need_redisplay = true;
+                        Return::Noop
+                    }
+                    "#deg" | "#degree" => {
+                        let mut info = ui.get_info();
+                        info.angle = Angle::Degree;
+                        ui.set_info(info);
+                        Return::Noop
+                    }
+                    "#rad" | "#radian" => {
+                        let mut info = ui.get_info();
+                        info.angle = Angle::Radian;
+                        ui.set_info(info);
+                        Return::Noop
+                    }
+                    "#grad" | "#gradian" => {
+                        let mut info = ui.get_info();
+                        info.angle = Angle::Gradian;
+                        ui.set_info(info);
                         Return::Noop
                     }
                     "#debug" => {
@@ -190,6 +220,13 @@ fn main() {
                     "floor" => stacks[0].unary(|a| a.floor()),
                     "ceil" => stacks[0].unary(|a| a.ceil()),
                     "factor" => stacks[0].try_unary(|a| a.try_factor()),
+                    // Trig Functions
+                    "sin" => stacks[0].try_unary(|a| a.try_sin(ui.get_info().angle)),
+                    "cos" => stacks[0].try_unary(|a| a.try_cos(ui.get_info().angle)),
+                    "tan" => stacks[0].try_unary(|a| a.try_tan(ui.get_info().angle)),
+                    "asin" | "arcsin" => stacks[0].try_unary(|a| a.try_asin(ui.get_info().angle)),
+                    "acos" | "arccos" => stacks[0].try_unary(|a| a.try_acos(ui.get_info().angle)),
+                    "atan" | "arctan" => stacks[0].try_unary(|a| a.try_atan(ui.get_info().angle)),
                     // Tuple Operations
                     "collect" => stacks[0].try_reduce(|acc, e| acc.try_push(e)),
                     "expand" => stacks[0].try_unary_v(|a| a.try_expand()),

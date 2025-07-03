@@ -1,5 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <!-- HTML 2.0 https://www.w3.org/MarkUp/1995-archive/html-spec.html + Tables -->
+<!-- https://www.fltk.org/doc-1.5/classFl__Help__View.html#details -->
 <html>
   <head>
     <title>RPN-rs Graphical Reverse Polish Notation Calculator</title>
@@ -49,6 +50,9 @@
       <tr><td>#hex</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Hexadecimal">Hexadecimal</a></td></tr>
       <tr><td>#R | #real</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Real_number">Real</a></td></tr>
       <tr><td>#Q | #rat(ional)</td><td><i>N/A</i></td><td colspan=2>Set display to <a href="https://en.wikipedia.org/wiki/Rational_number">Rational</a></td></tr>
+      <tr><td>#deg(ree)</td><td><i>N/A</i></td><td colspan=2>Set trigonometry functions to use <a href="https://en.wikipedia.org/wiki/Degree_(angle)">Degrees</a> (360&deg;)</td></tr>
+      <tr><td>#rad(ian)</td><td><i>N/A</i></td><td colspan=2>Set trigonometry functions to use <a href="https://en.wikipedia.org/wiki/Radian_(angle)">Radian</a> (2*pi)</td></tr>
+      <tr><td>#grad(ian)</td><td><i>N/A</i></td><td colspan=2>Set trigonometry functions to use <a href="https://en.wikipedia.org/wiki/Gradian">Gradian</a> (400&deg;)</td></tr>
       <tr><th colspan=4>Stack Operations</th></tr>
       <tr><td>clear</td><td><i>all</i></td><td colspan=2>clear stack and history</td></tr>
       <tr><td>drop | del(ete)</td><td>1</td><td colspan=2>Remove first item on stack</td></tr>
@@ -90,6 +94,14 @@
       <tr><td>logn | logb</td><td>2</td><td><a href="https://en.wikipedia.org/wiki/Logarithm#Change_of_base">Logarithm</a> (base y)</td><td><i>log(x)/log(y)</i></td></tr>
       <tr><td>permute | nPm</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Permutation#k-permutations_of_n">Permutation</a> m-permutations of n</td><td><i>xPy</i></td></tr>
       <tr><td>choose | nCm</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Combination">Combination</a> "n choose m"</td><td><i>xCy</i></td></tr>
+
+      <tr><th colspan=4>Trigonometric Operations</th></tr>
+      <tr><td>sin</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Sine_and_cosine">Sine</a></td><td><i>sin(x)</i></td></tr>
+      <tr><td>cos</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Sine_and_cosine">Cosine</a></td><td><i>cos(x)</i></td></tr>
+      <tr><td>tan</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Trigonometric_functions#Right-angled_triangle_definitions">Tangent</a></td><td><i>tan(x)</i></td></tr>
+      <tr><td>asin | arcsin</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Inverse_trigonometric_functions">Arc-Sine</a> (Inverse Sine)</td><td><i>asin(x)</i></td></tr>
+      <tr><td>acos | arccos</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Inverse_trigonometric_functions">Arc-Cosine</a> (Inverse Cosine)</td><td><i>acos(x)</i></td></tr>
+      <tr><td>atan | arctan</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Trigonometric_functions#Right-angled_triangle_definitions">Arc-Tangent</a> (Inverse Tangent)</td><td><i>atan(x)</i></td></tr>
 
       <tr><th colspan=4>Binary (bitwise) Operations</th></tr>
       <tr><td>&lt;&lt; | lshift</td><td>2</td><td>Bitwise left shift</td><td><i>x&laquo;y</i></td></tr>

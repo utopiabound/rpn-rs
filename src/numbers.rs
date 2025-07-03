@@ -176,10 +176,12 @@ impl RpnToStringScalar for Float {
         };
         format!("{}{}{s}", if sign { "-" } else { "" }, radix.prefix())
     }
+
     fn digits(&self, radix: Radix) -> usize {
         let (_sign, s, exp) = self.to_sign_string_exp(radix.into(), None);
-        s.len() + exp.unwrap_or_default() as usize
+        s.len() + exp.unwrap_or_default().unsigned_abs() as usize
     }
+
     fn to_string_width(&self, radix: Radix, width: Option<usize>) -> String {
         let width = width.map(|w| {
             let l = self.digits(radix);
@@ -214,7 +216,7 @@ impl RpnToStringScalar for Rational {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, strum_macros::Display, Copy, Clone, PartialEq, Eq)]
 pub(crate) enum Radix {
     #[default]
     Decimal,
@@ -269,6 +271,14 @@ impl From<Radix> for i32 {
             Radix::Octal => 8,
         }
     }
+}
+
+#[derive(Debug, Default, Copy, Clone, strum_macros::Display, PartialEq, Eq)]
+pub(crate) enum Angle {
+    #[default]
+    Degree,
+    Radian,
+    Gradian,
 }
 
 impl From<i32> for Scalar {
@@ -698,6 +708,175 @@ impl Scalar {
         }
     }
 
+    // Trig Functions
+    pub(crate) fn sin(self, angle: Angle) -> Self {
+        match self {
+            Scalar::Int(x) => {
+                let f = Float::with_val(FLOAT_PRECISION, x);
+                match angle {
+                    Angle::Radian => f.sin().into(),
+                    Angle::Degree => f.sin_u(360).into(),
+                    Angle::Gradian => f.sin_u(400).into(),
+                }
+            }
+            Scalar::Float(f) => match angle {
+                Angle::Radian => f.sin().into(),
+                Angle::Degree => f.sin_u(360).into(),
+                Angle::Gradian => f.sin_u(400).into(),
+            },
+            Scalar::Complex(x) => match angle {
+                Angle::Radian => x.sin().into(),
+                Angle::Degree => (x * Complex::with_val(FLOAT_PRECISION, Constant::Pi)
+                    / Complex::with_val(FLOAT_PRECISION, 180))
+                .sin()
+                .into(),
+                Angle::Gradian => (x * Complex::with_val(FLOAT_PRECISION, Constant::Pi)
+                    / Complex::with_val(FLOAT_PRECISION, 200))
+                .sin()
+                .into(),
+            },
+        }
+    }
+
+    pub(crate) fn cos(self, angle: Angle) -> Self {
+        match self {
+            Scalar::Int(x) => {
+                let f = Float::with_val(FLOAT_PRECISION, x);
+                match angle {
+                    Angle::Radian => f.cos().into(),
+                    Angle::Degree => f.cos_u(360).into(),
+                    Angle::Gradian => f.cos_u(400).into(),
+                }
+            }
+            Scalar::Float(f) => match angle {
+                Angle::Radian => f.cos().into(),
+                Angle::Degree => f.cos_u(360).into(),
+                Angle::Gradian => f.cos_u(400).into(),
+            },
+            Scalar::Complex(x) => match angle {
+                Angle::Radian => x.cos().into(),
+                Angle::Degree => (x * Complex::with_val(FLOAT_PRECISION, Constant::Pi)
+                    / Complex::with_val(FLOAT_PRECISION, 180))
+                .cos()
+                .into(),
+                Angle::Gradian => (x * Complex::with_val(FLOAT_PRECISION, Constant::Pi)
+                    / Complex::with_val(FLOAT_PRECISION, 200))
+                .cos()
+                .into(),
+            },
+        }
+    }
+
+    pub(crate) fn tan(self, angle: Angle) -> Self {
+        match self {
+            Scalar::Int(x) => {
+                let f = Float::with_val(FLOAT_PRECISION, x);
+                match angle {
+                    Angle::Radian => f.tan().into(),
+                    Angle::Degree => f.tan_u(360).into(),
+                    Angle::Gradian => f.tan_u(400).into(),
+                }
+            }
+            Scalar::Float(f) => match angle {
+                Angle::Radian => f.tan().into(),
+                Angle::Degree => f.tan_u(360).into(),
+                Angle::Gradian => f.tan_u(400).into(),
+            },
+            Scalar::Complex(x) => match angle {
+                Angle::Radian => x.tan().into(),
+                Angle::Degree => (x * Complex::with_val(FLOAT_PRECISION, Constant::Pi)
+                    / Complex::with_val(FLOAT_PRECISION, 180))
+                .tan()
+                .into(),
+                Angle::Gradian => (x * Complex::with_val(FLOAT_PRECISION, Constant::Pi)
+                    / Complex::with_val(FLOAT_PRECISION, 200))
+                .tan()
+                .into(),
+            },
+        }
+    }
+
+    pub(crate) fn asin(self, angle: Angle) -> Self {
+        match self {
+            Scalar::Int(x) => {
+                let f = Float::with_val(FLOAT_PRECISION, x);
+                match angle {
+                    Angle::Radian => f.asin().into(),
+                    Angle::Degree => f.asin_u(360).into(),
+                    Angle::Gradian => f.asin_u(400).into(),
+                }
+            }
+            Scalar::Float(f) => match angle {
+                Angle::Radian => f.asin().into(),
+                Angle::Degree => f.asin_u(360).into(),
+                Angle::Gradian => f.asin_u(400).into(),
+            },
+            Scalar::Complex(x) => match angle {
+                Angle::Radian => x.asin().into(),
+                Angle::Degree => (x.asin() * Complex::with_val(FLOAT_PRECISION, 180)
+                    / Complex::with_val(FLOAT_PRECISION, Constant::Pi))
+                .into(),
+                Angle::Gradian => (x.asin() * Complex::with_val(FLOAT_PRECISION, 200)
+                    / Complex::with_val(FLOAT_PRECISION, Constant::Pi))
+                .into(),
+            },
+        }
+    }
+
+    pub(crate) fn acos(self, angle: Angle) -> Self {
+        match self {
+            Scalar::Int(x) => {
+                let f = Float::with_val(FLOAT_PRECISION, x);
+                match angle {
+                    Angle::Radian => f.acos().into(),
+                    Angle::Degree => f.acos_u(360).into(),
+                    Angle::Gradian => f.acos_u(400).into(),
+                }
+            }
+            Scalar::Float(f) => match angle {
+                Angle::Radian => f.acos().into(),
+                Angle::Degree => f.acos_u(360).into(),
+                Angle::Gradian => f.acos_u(400).into(),
+            },
+            Scalar::Complex(x) => match angle {
+                Angle::Radian => x.acos().into(),
+                Angle::Degree => (x.acos() * Complex::with_val(FLOAT_PRECISION, 180)
+                    / Complex::with_val(FLOAT_PRECISION, Constant::Pi))
+                .into(),
+                Angle::Gradian => (x.acos() * Complex::with_val(FLOAT_PRECISION, 200)
+                    / Complex::with_val(FLOAT_PRECISION, Constant::Pi))
+                .into(),
+            },
+        }
+    }
+
+    pub(crate) fn atan(self, angle: Angle) -> Self {
+        match self {
+            Scalar::Int(x) => {
+                let f = Float::with_val(FLOAT_PRECISION, x);
+                match angle {
+                    Angle::Radian => f.atan().into(),
+                    Angle::Degree => f.atan_u(360).into(),
+                    Angle::Gradian => f.atan_u(400).into(),
+                }
+            }
+            Scalar::Float(f) => match angle {
+                Angle::Radian => f.atan().into(),
+                Angle::Degree => f.atan_u(360).into(),
+                Angle::Gradian => f.atan_u(400).into(),
+            },
+            Scalar::Complex(x) => match angle {
+                Angle::Radian => x.atan().into(),
+                Angle::Degree => (x.atan() * Complex::with_val(FLOAT_PRECISION, 180)
+                    / Complex::with_val(FLOAT_PRECISION, Constant::Pi))
+                .into(),
+                Angle::Gradian => (x.atan() * Complex::with_val(FLOAT_PRECISION, 200)
+                    / Complex::with_val(FLOAT_PRECISION, Constant::Pi))
+                .into(),
+            },
+        }
+    }
+
     // @@ Floats don't get exactly the right length
     pub(crate) fn to_string_radix(
         &self,
@@ -1060,6 +1239,55 @@ impl Value {
                 }
                 m.into()
             }
+        }
+    }
+
+    // Trig Functions
+    pub(crate) fn try_sin(self, angle: Angle) -> Result<Self, String> {
+        match self {
+            Value::Scalar(s) => Ok(Value::Scalar(s.sin(angle))),
+            Value::Tuple(_t) => Err("NYI".to_owned()),
+            Value::Matrix(_m) => Err("NYI".to_owned()),
+        }
+    }
+
+    pub(crate) fn try_cos(self, angle: Angle) -> Result<Self, String> {
+        match self {
+            Value::Scalar(s) => Ok(Value::Scalar(s.cos(angle))),
+            Value::Tuple(_t) => Err("NYI".to_owned()),
+            Value::Matrix(_m) => Err("NYI".to_owned()),
+        }
+    }
+
+    pub(crate) fn try_tan(self, angle: Angle) -> Result<Self, String> {
+        match self {
+            Value::Scalar(s) => Ok(Value::Scalar(s.tan(angle))),
+            Value::Tuple(_t) => Err("NYI".to_owned()),
+            Value::Matrix(_m) => Err("NYI".to_owned()),
+        }
+    }
+
+    pub(crate) fn try_asin(self, angle: Angle) -> Result<Self, String> {
+        match self {
+            Value::Scalar(s) => Ok(Value::Scalar(s.asin(angle))),
+            Value::Tuple(_t) => Err("NYI".to_owned()),
+            Value::Matrix(_m) => Err("NYI".to_owned()),
+        }
+    }
+
+    pub(crate) fn try_acos(self, angle: Angle) -> Result<Self, String> {
+        match self {
+            Value::Scalar(s) => Ok(Value::Scalar(s.acos(angle))),
+            Value::Tuple(_t) => Err("NYI".to_owned()),
+            Value::Matrix(_m) => Err("NYI".to_owned()),
+        }
+    }
+
+    pub(crate) fn try_atan(self, angle: Angle) -> Result<Self, String> {
+        match self {
+            Value::Scalar(s) => Ok(Value::Scalar(s.atan(angle))),
+            Value::Tuple(_t) => Err("NYI".to_owned()),
+            Value::Matrix(_m) => Err("NYI".to_owned()),
         }
     }
 

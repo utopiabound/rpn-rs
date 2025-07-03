@@ -4,8 +4,8 @@
  */
 
 use crate::{
-    numbers::{Radix, Value},
-    ui::{about_txt, help_text, CalcDisplay, Message},
+    numbers::Value,
+    ui::{about_txt, help_text, CalcDisplay, Info, Message},
 };
 
 use rustyline::{
@@ -14,8 +14,7 @@ use rustyline::{
 };
 
 pub(crate) struct ReadlineCalcUI {
-    radix: Radix,
-    rational: bool,
+    info: Info,
     editor: DefaultEditor,
     input: Option<String>,
     stack: Vec<String>,
@@ -30,8 +29,7 @@ impl CalcDisplay for ReadlineCalcUI {
         let editor = DefaultEditor::new()?;
 
         Ok(Self {
-            radix: Radix::default(),
-            rational: true,
+            info: Info::default(),
             input: None,
             error: None,
             stack: vec![],
@@ -99,17 +97,18 @@ impl CalcDisplay for ReadlineCalcUI {
         self.stack = newdata
             .iter()
             .enumerate()
-            .map(|(i, v)| v.to_string_radix(self.radix, self.rational, i != len - 1, None))
+            .map(|(i, v)| {
+                v.to_string_radix(self.info.radix, self.info.rational, i != len - 1, None)
+            })
             .collect();
     }
 
-    fn set_display(&mut self, radix: Option<Radix>, rational: Option<bool>) {
-        if let Some(rdx) = radix {
-            self.radix = rdx;
-        }
-        if let Some(rational) = rational {
-            self.rational = rational;
-        }
+    fn set_info(&mut self, info: Info) {
+        self.info = info;
+    }
+
+    fn get_info(&self) -> Info {
+        self.info
     }
 
     /// Show Help Text

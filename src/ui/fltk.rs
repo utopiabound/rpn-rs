@@ -7,8 +7,8 @@
  */
 
 use crate::{
-    numbers::{Radix, Value},
-    ui::{about_txt, CalcDisplay, Message, HELP_HTML},
+    numbers::{Angle, Radix, Value},
+    ui::{about_txt, CalcDisplay, Info, Message, HELP_HTML},
 };
 use copypasta::{ClipboardContext, ClipboardProvider};
 use fltk::{
@@ -28,6 +28,7 @@ use std::{cell::RefCell, error::Error, rc::Rc};
 #[derive(Debug, Copy, Clone)]
 enum FltkMessage {
     About,
+    Angle(Angle),
     Clear,
     Drop,
     Copy,
@@ -42,6 +43,7 @@ enum FltkMessage {
 pub(crate) struct FltkCalcDisplay {
     app: fltk::app::App,
     table: StackOutput,
+    angle: Angle,
     input: Input,
     error: Output,
     rx: app::Receiver<FltkMessage>,
@@ -52,6 +54,32 @@ pub(crate) struct FltkCalcDisplay {
 }
 
 const ICON: &[u8] = include_bytes!("../../desktop/rpn-rs.png");
+const MENU_RATIONAL: &str = "Display/Rational\t";
+
+trait MenuName {
+    fn to_menu(&self) -> &str;
+}
+
+impl MenuName for Radix {
+    fn to_menu(&self) -> &str {
+        match self {
+            Radix::Binary => "Display/Binary\t",
+            Radix::Decimal => "Display/Decimal\t",
+            Radix::Hex => "Display/Hexadecimal\t",
+            Radix::Octal => "Display/Octal\t",
+        }
+    }
+}
+
+impl MenuName for Angle {
+    fn to_menu(&self) -> &str {
+        match self {
+            Angle::Degree => "Option/Degrees\t",
+            Angle::Radian => "Option/Radians\t",
+            Angle::Gradian => "Option/Gradians\t",
+        }
+    }
+}
 
 impl CalcDisplay for FltkCalcDisplay {
     fn init() -> Result<Self, Box<dyn Error + Send + Sync>> {
@@ -111,39 +139,60 @@ impl CalcDisplay for FltkCalcDisplay {
             FltkMessage::Quit,
         );
         menu.add_emit(
-            "Radix/Decimal\t",
+            MENU_RATIONAL,
+            Shortcut::Ctrl | 'r',
+            MenuFlag::Toggle,
+            tx,
+            FltkMessage::Rational,
+        );
+        menu.add_emit(
+            Radix::Decimal.to_menu(),
             Shortcut::Ctrl | 'd',
             MenuFlag::Radio,
             tx,
             FltkMessage::Radix(Radix::Decimal),
         );
         menu.add_emit(
-            "Radix/Hexadecimal\t",
+            Radix::Hex.to_menu(),
             Shortcut::Ctrl | 'x',
             MenuFlag::Radio,
             tx,
             FltkMessage::Radix(Radix::Hex),
         );
         menu.add_emit(
-            "Radix/Octal\t",
+            Radix::Octal.to_menu(),
             Shortcut::Ctrl | 'o',
             MenuFlag::Radio,
             tx,
             FltkMessage::Radix(Radix::Octal),
         );
         menu.add_emit(
-            "Radix/Binary\t",
+            Radix::Binary.to_menu(),
             Shortcut::Ctrl | 'b',
             MenuFlag::Radio,
             tx,
             FltkMessage::Radix(Radix::Binary),
         );
         menu.add_emit(
-            "Options/Rational\t",
-            Shortcut::Ctrl | 'r',
-            MenuFlag::Toggle,
+            Angle::Degree.to_menu(),
+            Shortcut::None,
+            MenuFlag::Radio,
             tx,
-            FltkMessage::Rational,
+            FltkMessage::Angle(Angle::Degree),
+        );
+        menu.add_emit(
+            Angle::Radian.to_menu(),
+            Shortcut::None,
+            MenuFlag::Radio,
+            tx,
+            FltkMessage::Angle(Angle::Radian),
+        );
+        menu.add_emit(
+            Angle::Gradian.to_menu(),
+            Shortcut::None,
+            MenuFlag::Radio,
+            tx,
+            FltkMessage::Angle(Angle::Gradian),
         );
         menu.add_emit(
             "Help/About\t",
@@ -159,17 +208,22 @@ impl CalcDisplay for FltkCalcDisplay {
             tx,
             FltkMessage::Help,
         );
-        menu.find_item("Radix/Decimal\t")
-            .expect("Failed to find Decimal Radix")
-            .set();
-        menu.find_item("Options/Rational\t")
-            .expect("Failed to find Rational Option")
-            .set();
 
         let error = Output::default().with_size(width, err_h);
 
         let table = StackOutput::new(width, out_h);
         pack.resizable(&*table.table().borrow());
+
+        // Set Menu Defaults
+        menu.find_item(table.get_radix().to_menu())
+            .expect("Failed to find Decimal Radix")
+            .set();
+        menu.find_item(MENU_RATIONAL)
+            .expect("Failed to find Rational Option")
+            .set();
+        menu.find_item(Angle::default().to_menu())
+            .expect("Failed to find Degrees Option")
+            .set();
 
         let mut input = Input::default().with_size(width, in_h);
 
@@ -206,6 +260,7 @@ impl CalcDisplay for FltkCalcDisplay {
             tx,
             menu,
             clipboard: Box::new(clipboard),
+            angle: Angle::default(),
         })
     }
 
@@ -226,10 +281,13 @@ impl CalcDisplay for FltkCalcDisplay {
                     self.table.set_radix(rdx);
                     self.table.redraw();
                 }
+                FltkMessage::Angle(angle) => {
+                    self.angle = angle;
+                }
                 FltkMessage::Rational => {
                     let item = self
                         .menu
-                        .find_item("Options/Rational\t")
+                        .find_item(MENU_RATIONAL)
                         .expect("Failed to find Rational Option");
                     self.table.set_rational(item.value());
                     self.table.redraw();
@@ -268,12 +326,40 @@ impl CalcDisplay for FltkCalcDisplay {
         self.table.redraw();
     }
 
-    fn set_display(&mut self, rdx: Option<Radix>, rational: Option<bool>) {
-        if let Some(rdx) = rdx {
-            self.table.set_radix(rdx);
+    fn set_info(&mut self, info: Info) {
+        let old_info = self.get_info();
+        if old_info.radix != info.radix {
+            self.table.set_radix(info.radix);
+            self.menu
+                .find_item(old_info.radix.to_menu())
+                .expect("failed to find old Radix menu")
+                .clear();
+            self.menu
+                .find_item(info.radix.to_menu())
+                .expect("Failed to find new Radix Menu")
+                .set();
         }
-        if let Some(rational) = rational {
-            self.table.set_rational(rational);
+        if old_info.rational != info.rational {
+            self.table.set_rational(info.rational);
+            let mut item = self
+                .menu
+                .find_item(MENU_RATIONAL)
+                .expect("Failed to find Rational Option");
+            if info.rational {
+                item.set();
+            } else {
+                item.clear();
+            }
+        }
+        // @@
+        self.angle = info.angle;
+    }
+
+    fn get_info(&self) -> Info {
+        Info {
+            radix: self.table.get_radix(),
+            rational: self.table.get_rational(),
+            angle: self.angle,
         }
     }
 
@@ -479,8 +565,16 @@ impl StackOutput {
         *self.radix.borrow_mut() = radix;
     }
 
+    pub(crate) fn get_radix(&self) -> Radix {
+        *self.radix.borrow()
+    }
+
     pub(crate) fn set_rational(&mut self, rational: bool) {
         *self.rational.borrow_mut() = rational;
+    }
+
+    pub(crate) fn get_rational(&self) -> bool {
+        *self.rational.borrow()
     }
 
     pub(crate) fn table(&self) -> Rc<RefCell<table::Table>> {
