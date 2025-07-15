@@ -16,8 +16,8 @@ use crossterm::{
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
-    style::{Color, Style},
-    text::{Span, Text},
+    style::{Color, Modifier, Style},
+    text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
     Frame, Terminal,
 };
@@ -107,11 +107,18 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
 
     let widths = [Constraint::Length(6), Constraint::Length(data_width)];
     let t = Table::new(rows, widths)
-        // @@ INFO LINE with Angel
-        .block(Block::default().borders(Borders::NONE).title(Span::styled(
-            info.error.clone().unwrap_or_default(),
-            Style::default().fg(Color::Red),
-        )))
+        .block(
+            Block::default()
+                .borders(Borders::NONE)
+                .title(Line::from(vec![
+                    Span::styled(format!("{:9}", info.info.radix), Modifier::BOLD),
+                    Span::styled(format!("{:9}", info.info.angle), Modifier::BOLD),
+                    Span::styled(
+                        info.error.clone().unwrap_or_default(),
+                        Style::default().fg(Color::Red),
+                    ),
+                ])),
+        )
         .column_spacing(1);
     f.render_stateful_widget(t, chunks[0], &mut info.state);
     let input = Paragraph::new(info.input.as_str());
