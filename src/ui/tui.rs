@@ -5,21 +5,21 @@
 
 use crate::{
     numbers::{Radix, Value},
-    ui::{about_txt, help_text, CalcDisplay, Info, Message},
+    ui::{CalcDisplay, Info, Message, about_txt, help_text},
 };
 
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Cell, Clear, Paragraph, Row, Table, TableState},
-    Frame, Terminal,
 };
 use std::{error::Error, io::Stdout};
 

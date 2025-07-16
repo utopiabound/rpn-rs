@@ -8,7 +8,7 @@
 
 use crate::{
     numbers::{Angle, Radix, Value},
-    ui::{about_txt, CalcDisplay, Info, Message, HELP_HTML},
+    ui::{CalcDisplay, HELP_HTML, Info, Message, about_txt},
 };
 use copypasta::{ClipboardContext, ClipboardProvider};
 use fltk::{
@@ -434,11 +434,11 @@ impl StackOutput {
         // push focus from Text display to input
         table.handle(move |s, e| match e {
             enums::Event::Focus => {
-                if let Some(p) = s.parent() {
-                    if let Some(mut c) = p.child(p.children() - 1) {
-                        let _ = c.take_focus();
-                        return true;
-                    }
+                if let Some(p) = s.parent()
+                    && let Some(mut c) = p.child(p.children() - 1)
+                {
+                    let _ = c.take_focus();
+                    return true;
                 }
                 false
             }

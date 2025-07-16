@@ -5,12 +5,12 @@
 
 use crate::{
     numbers::Value,
-    ui::{about_txt, help_text, CalcDisplay, Info, Message},
+    ui::{CalcDisplay, Info, Message, about_txt, help_text},
 };
 
 use rustyline::{
-    error::{ReadlineError, Signal},
     DefaultEditor,
+    error::{ReadlineError, Signal},
 };
 
 pub(crate) struct ReadlineCalcUI {

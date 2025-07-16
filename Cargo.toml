@@ -2,7 +2,7 @@
 name = "rpn-rs"
 version = "0.1.7"
 authors = ["Nathaniel Clark"]
-edition = "2021"
+edition = "2024"
 keywords = [ "fltk", "rpn", "calculator", "tui" ]
 categories = [ "gui", "mathematics", "command-line-utilities" ]
 license = "GPL-2.0-only"
@@ -31,7 +31,7 @@ copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 html2text = "0.15"
 
 # CLI
-rustyline = "16"
+rustyline = "17"
 
 # (Rata)TUI
 crossterm = "0.29"

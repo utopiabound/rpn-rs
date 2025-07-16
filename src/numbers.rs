@@ -8,12 +8,12 @@ use libmat::mat::Matrix;
 use num_traits::{Inv, Num, One, Signed, Zero};
 use regex::Regex;
 use rug::{
+    Complete, Complex, Float, Integer, Rational,
     float::{Constant, Round, Special},
     ops::{DivAssignRound, DivFromRound, Pow, RemRounding},
-    Complete, Complex, Float, Integer, Rational,
 };
 use std::{
-    cmp::{max, min, Ordering},
+    cmp::{Ordering, max, min},
     collections::VecDeque,
     ops,
 };
@@ -362,14 +362,14 @@ fn median(mut list: Vec<Scalar>) -> Scalar {
     let len = list.len();
 
     let n = len >> 1;
-    let val = if len & 1 == 1 {
+
+    if len & 1 == 1 {
         let (_, val, _) = list.select_nth_unstable_by(n, |a, b| a.total_cmp(b));
         val.clone()
     } else {
         list.sort_unstable_by(|a, b| a.total_cmp(b));
         (list[n - 1].clone() + list[n].clone()) / 2.into()
-    };
-    val
+    }
 }
 
 impl TryFrom<&str> for Scalar {
@@ -1850,12 +1850,11 @@ impl ops::BitAnd<Scalar> for Scalar {
     type Output = Result<Scalar, String>;
 
     fn bitand(self, other: Self) -> Self::Output {
-        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other) {
-            if a.is_integer() && b.is_integer() {
-                Ok(Scalar::from(a.numer().clone() & b.numer().clone()))
-            } else {
-                Err("Not supported".to_string())
-            }
+        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other)
+            && a.is_integer()
+            && b.is_integer()
+        {
+            Ok(Scalar::from(a.numer().clone() & b.numer().clone()))
         } else {
             Err("Not supported".to_string())
         }
@@ -1866,12 +1865,11 @@ impl ops::BitOr<Scalar> for Scalar {
     type Output = Result<Scalar, String>;
 
     fn bitor(self, other: Self) -> Self::Output {
-        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other) {
-            if a.is_integer() && b.is_integer() {
-                Ok(Scalar::from(a.numer().clone() | b.numer().clone()))
-            } else {
-                Err("Not supported".to_string())
-            }
+        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other)
+            && a.is_integer()
+            && b.is_integer()
+        {
+            Ok(Scalar::from(a.numer().clone() | b.numer().clone()))
         } else {
             Err("Not supported".to_string())
         }
@@ -1882,12 +1880,11 @@ impl ops::BitXor<Scalar> for Scalar {
     type Output = Result<Scalar, String>;
 
     fn bitxor(self, other: Self) -> Self::Output {
-        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other) {
-            if a.is_integer() && b.is_integer() {
-                Ok(Scalar::from(a.numer().clone() ^ b.numer().clone()))
-            } else {
-                Err("Not supported".to_string())
-            }
+        if let (Scalar::Int(a), Scalar::Int(b)) = (self, other)
+            && a.is_integer()
+            && b.is_integer()
+        {
+            Ok(Scalar::from(a.numer().clone() ^ b.numer().clone()))
         } else {
             Err("Not supported".to_string())
         }
