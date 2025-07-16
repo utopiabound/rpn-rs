@@ -1,4 +1,4 @@
-/* RPN-rs (c) 2024 Nathaniel Clark
+/* RPN-rs (c) 2025 Nathaniel Clark
  *
  * This source code is subject to the terms of the GPL v2. See LICENCE file.
  */
@@ -14,7 +14,7 @@ pub(crate) const HELP_HTML: &str = include_str!("fixtures/help.html");
 
 pub(crate) fn about_txt() -> String {
     format!(
-        "RPN Calculator {} (c) 2024 {}",
+        "RPN Calculator {} (c) 2025 {}",
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_AUTHORS")
     )
