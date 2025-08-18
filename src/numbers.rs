@@ -1369,31 +1369,93 @@ impl Value {
     }
 
     // Stats Functions
-    pub(crate) fn mean(self) -> Self {
+    pub(crate) fn mean(self) -> Scalar {
         match self {
-            Value::Scalar(s) => Value::Scalar(s),
+            Value::Scalar(s) => s,
             Value::Tuple(t) => {
                 let len = t.len().into();
                 let v: Scalar = t.into_iter().sum();
-                Value::Scalar(v / len)
+                v / len
             }
             Value::Matrix(m) => {
                 let len: Scalar = Scalar::from(m.rows()) * m.cols().into();
                 let sum: Scalar = m.into_iter().sum();
-                Value::Scalar(sum / len)
+                sum / len
             }
         }
     }
 
-    pub(crate) fn median(self) -> Self {
+    /// Geometric Mean
+    /// n-th root of the product of all the values
+    pub(crate) fn geometric_mean(self) -> Scalar {
         match self {
-            Value::Scalar(s) => Value::Scalar(s),
-            Value::Tuple(t) => Value::Scalar(median(t.into_iter().collect())),
+            Value::Scalar(s) => s,
+            Value::Tuple(t) => {
+                let len = t.len().into();
+                let v: Scalar = t.into_iter().map(|x| x.ln()).sum();
+                (v / len).exp()
+            }
+            Value::Matrix(m) => {
+                let len: Scalar = Scalar::from(m.rows()) * m.cols().into();
+                let sum: Scalar = m.into_iter().map(|x| x.ln()).sum();
+                (sum / len).exp()
+            }
+        }
+    }
+
+    /// Harmonic Mean
+    pub(crate) fn harmonic_mean(self) -> Scalar {
+        match self {
+            Value::Scalar(s) => s,
+            Value::Tuple(t) => {
+                let len: Scalar = t.len().into();
+                let v: Scalar = t.into_iter().map(|x| x.inv()).sum();
+                len / v
+            }
+            Value::Matrix(m) => {
+                let len: Scalar = Scalar::from(m.rows()) * m.cols().into();
+                let sum: Scalar = m.into_iter().map(|x| x.inv()).sum();
+                len / sum
+            }
+        }
+    }
+
+    pub(crate) fn median(self) -> Scalar {
+        match self {
+            Value::Scalar(s) => s,
+            Value::Tuple(t) => median(t.into_iter().collect()),
             Value::Matrix(m) => {
                 let list = m.into_iter().collect::<Vec<_>>();
-                let val = median(list);
-                Value::Scalar(val)
+                median(list)
             }
+        }
+    }
+
+    /// Geothmetic Meandian (XKCD #2435)
+    ///
+    /// F(x0, x1, ... xN) -> (Arithmatic Mean, Geometric Mean, Median)
+    /// gmdn(...) -> F(F(F(F(...))))) until it converges
+    ///
+    /// This funcition computes a single iteration
+    pub(crate) fn gmdn(self) -> Self {
+        match self {
+            Value::Scalar(s) => Value::Scalar(s),
+            Value::Tuple(_) => Value::Tuple(
+                [
+                    self.clone().mean(),
+                    self.clone().geometric_mean(),
+                    self.median(),
+                ]
+                .into(),
+            ),
+            Value::Matrix(_) => Value::Tuple(
+                [
+                    self.clone().mean(),
+                    self.clone().geometric_mean(),
+                    self.median(),
+                ]
+                .into(),
+            ),
         }
     }
 

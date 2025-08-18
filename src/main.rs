@@ -234,8 +234,11 @@ fn main() {
                     "unpush" => stacks[0].try_unary_v(|a| a.try_unpush()),
                     "pop" => stacks[0].try_unary_v(|a| a.try_pull()),
                     // Tuple / Stats Operations
-                    "avg" | "mean" => stacks[0].unary(|a| a.mean()),
-                    "median" => stacks[0].unary(|a| a.median()),
+                    "avg" | "mean" | "amean" | "AM" => stacks[0].unary(|a| a.mean().into()),
+                    "gmean" | "GM" => stacks[0].unary(|a| a.geometric_mean().into()),
+                    "hmean" | "HM" => stacks[0].unary(|a| a.harmonic_mean().into()),
+                    "median" => stacks[0].unary(|a| a.median().into()),
+                    "gmdn" => stacks[0].unary(|a| a.gmdn()),
                     "sort" => stacks[0].unary(|a| a.sort()),
                     "sum" => stacks[0].unary(|a| a.sum()),
                     "prod" | "product" => stacks[0].unary(|a| a.product()),
