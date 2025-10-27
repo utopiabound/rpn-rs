@@ -155,6 +155,15 @@ impl RpnToStringScalar for Float {
         let s = if let Some(exp) = exp {
             if exp > 0 {
                 if exp >= len {
+                    let s = if let Some(digits) = digits
+                        && exp as usize > digits
+                    {
+                        let (_, s, _) =
+                            self.to_sign_string_exp(radix.into(), Some((exp - len) as usize));
+                        s
+                    } else {
+                        s
+                    };
                     s + &"0".repeat((exp - len) as usize)
                 } else {
                     let mut v = s;
@@ -184,9 +193,13 @@ impl RpnToStringScalar for Float {
 
     fn to_string_width(&self, radix: Radix, width: Option<usize>) -> String {
         let width = width.map(|w| {
-            let l = self.digits(radix);
-            let w = w - 1 - radix.prefix().len() - if self.is_sign_negative() { 1 } else { 0 };
-            min(w, l)
+            if w == 0 {
+                1
+            } else {
+                let l = self.digits(radix);
+                let w = w - 1 - radix.prefix().len() - if self.is_sign_negative() { 1 } else { 0 };
+                min(w, l)
+            }
         });
         self.to_string_scalar_len(radix, width)
     }
@@ -1004,33 +1017,70 @@ impl Value {
         let digits = digits.into();
         match self {
             Value::Scalar(x) => x.to_string_radix(radix, rational, digits),
-            Value::Tuple(x) => {
-                // @@ FIXME: digits / mutliple lines?
-                format!(
-                    "( {} )",
-                    x.iter()
-                        .map(|x| x.to_string_radix(radix, rational, digits))
-                        .join(" ")
-                )
+            Value::Tuple(tuple) => {
+                if let Some(digits) = digits {
+                    let mut digits = digits - 3;
+                    let mut len = tuple.len();
+
+                    let mut output = "( ".to_owned();
+                    for x in tuple {
+                        let n = (digits / len) - 1;
+                        let s = x.to_string_radix(radix, rational, Some(n));
+
+                        output += &s;
+                        output += " ";
+
+                        digits -= s.len();
+                        len -= 1;
+                    }
+                    output.push(')');
+
+                    output
+                } else {
+                    format!(
+                        "( {} )",
+                        tuple
+                            .iter()
+                            .map(|x| x.to_string_radix(radix, rational, None))
+                            .join(" ")
+                    )
+                }
             }
             Value::Matrix(x) => {
-                let mut s = String::from("[");
+                let mut output = "[".to_owned();
                 let rowmax = x.rows();
-                // @@ FIXME: digits
+                let mut len = if flat { rowmax * x.cols() } else { x.cols() };
+                let mut d = digits.map(|x| x - 1 - len - if flat { rowmax * 2 } else { 2 });
+                let minwidth = digits.map(|x| max(x / len, 2)).unwrap_or_default();
+
                 for i in 0..rowmax {
                     for j in 0..x.cols() {
-                        s += " ";
-                        s += x[i][j].to_string_radix(radix, rational, digits).as_str();
+                        let n = d.map(|x| max(x / len, minwidth));
+                        let s = x[i][j].to_string_radix(radix, rational, n);
+
+                        output += " ";
+                        output += &s;
+
+                        len -= 1;
+                        if let Some(x) = d
+                            && x > s.len()
+                        {
+                            d = Some(x - s.len() - 1);
+                        } else {
+                            d = Some(0);
+                        }
                     }
-                    s += if i == rowmax - 1 {
+                    output += if i == rowmax - 1 {
                         " ]"
                     } else if flat {
                         " ;"
                     } else {
+                        len = x.cols();
+                        d = digits.map(|x| x - 1 - len);
                         " ;\n"
                     };
                 }
-                s
+                output
             }
         }
     }
