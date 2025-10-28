@@ -28,7 +28,7 @@ fltk = { version = "^1.5", features = ["fltk-bundled"] }
 copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 
 # CLI & TUI
-html2text = "0.15"
+html2text = "0.16"
 
 # CLI
 rustyline = "17"
