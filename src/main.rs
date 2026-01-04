@@ -145,6 +145,13 @@ fn main() {
                         need_redisplay = true;
                         Return::Noop
                     }
+                    "#doz" => {
+                        let mut info = ui.get_info();
+                        info.radix = Radix::Duodecimal;
+                        ui.set_info(info);
+                        need_redisplay = true;
+                        Return::Noop
+                    }
                     "#hex" => {
                         let mut info = ui.get_info();
                         info.radix = Radix::Hex;

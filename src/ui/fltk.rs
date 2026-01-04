@@ -67,6 +67,7 @@ impl MenuName for Radix {
             Radix::Decimal => "Display/Decimal\t",
             Radix::Hex => "Display/Hexadecimal\t",
             Radix::Octal => "Display/Octal\t",
+            Radix::Duodecimal => "Display/Duodecimal\t",
         }
     }
 }
@@ -165,6 +166,13 @@ impl CalcDisplay for FltkCalcDisplay {
             MenuFlag::Radio,
             tx,
             FltkMessage::Radix(Radix::Octal),
+        );
+        menu.add_emit(
+            Radix::Duodecimal.to_menu(),
+            Shortcut::Ctrl | 'z',
+            MenuFlag::Radio,
+            tx,
+            FltkMessage::Radix(Radix::Duodecimal),
         );
         menu.add_emit(
             Radix::Binary.to_menu(),

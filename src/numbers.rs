@@ -236,6 +236,8 @@ pub(crate) enum Radix {
     Hex,
     Binary,
     Octal,
+    // Base twelve
+    Duodecimal,
 }
 
 impl Radix {
@@ -245,6 +247,7 @@ impl Radix {
             Radix::Hex => "0x",
             Radix::Binary => "0b",
             Radix::Octal => "0o",
+            Radix::Duodecimal => "0z",
         }
     }
     pub(crate) fn from_prefix(val: &str) -> Self {
@@ -253,6 +256,7 @@ impl Radix {
             "0o" | "o" => Self::Octal,
             "0d" | "d" => Self::Decimal,
             "0x" | "x" => Self::Hex,
+            "0z" | "z" => Self::Duodecimal,
             _ => Self::default(),
         }
     }
@@ -282,6 +286,7 @@ impl From<Radix> for i32 {
             Radix::Hex => 16,
             Radix::Binary => 2,
             Radix::Octal => 8,
+            Radix::Duodecimal => 12,
         }
     }
 }
@@ -2572,6 +2577,7 @@ mod test {
         assert_eq!(d.to_string_scalar(Radix::Hex), "0x10");
         assert_eq!(d.to_string_scalar(Radix::Octal), "0o20");
         assert_eq!(d.to_string_scalar(Radix::Binary), "0b10000");
+        assert_eq!(d.to_string_scalar(Radix::Duodecimal), "0z14");
     }
 
     #[test]
