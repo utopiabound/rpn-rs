@@ -263,7 +263,7 @@ impl Radix {
 
     // (is_neg, Radix, rest_of_string)
     pub(crate) fn split_string(value: &str) -> (bool, Self, String) {
-        let re = Regex::new(r"^(-)?(0[xXoObBdD])?(.*)").unwrap();
+        let re = Regex::new(r"^(-)?(0[xXoObBdDzZ])?(.*)").unwrap();
         let value = value.trim_start_matches('+');
         if let Some(caps) = re.captures(value) {
             (
@@ -2504,7 +2504,8 @@ mod test {
         assert_eq!(Scalar::try_from("1/2"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0x1/0x2"), Ok(a.clone()));
         assert_eq!(Scalar::try_from("0b1/2"), Ok(a.clone()));
-        assert_eq!(Scalar::try_from("0b1/0o2"), Ok(a));
+        assert_eq!(Scalar::try_from("0b1/0o2"), Ok(a.clone()));
+        assert_eq!(Scalar::try_from("0z1/0z2"), Ok(a));
     }
 
     #[test]
