@@ -100,7 +100,7 @@ impl CalcDisplay for FltkCalcDisplay {
             .with_label("rpn-rs")
             .with_size(width, win_h);
 
-        let mut pack = Pack::default().with_size(width, win_h);
+        let pack = Pack::default().with_size(width, win_h);
         let clipboard = ClipboardContext::new()?;
 
         let mut menu = SysMenuBar::default().with_size(width, in_h);
@@ -237,16 +237,16 @@ impl CalcDisplay for FltkCalcDisplay {
 
         let t2 = table.table();
         let other_height = win_h - out_h;
-        pack.resize_callback(move |_s, _x, _y, w, h| {
-            let tx = t2.borrow().x();
-            let mut t = t2.borrow_mut();
-            t.resize(0, tx, w, h - other_height);
-        });
         pack.end();
 
         app::set_focus(&input);
         wind.make_resizable(true);
         wind.resizable(&pack);
+        wind.resize_callback(move |_s, _x, _y, w, h| {
+            let tx = t2.borrow().x();
+            let mut t = t2.borrow_mut();
+            t.resize(0, tx, w, h - other_height);
+        });
         wind.end();
         wind.show();
         wind.set_icon(PngImage::from_data(ICON).ok());
