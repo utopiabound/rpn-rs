@@ -325,8 +325,13 @@ impl From<Rational> for Scalar {
 
 impl From<Float> for Scalar {
     fn from(x: Float) -> Self {
-        if x.is_integer() {
-            Scalar::Int(Rational::from(x.to_integer().unwrap()))
+        // Attempt to make Rational, but only if we're not out at
+        // FLOAT_PRECISION which means it's a floating point rounding
+        // error most likely
+        if let Some(r) = x.to_rational()
+            && r.denom() < &(Integer::from(1) << FLOAT_PRECISION)
+        {
+            Scalar::Int(r)
         } else {
             Scalar::Float(x)
         }

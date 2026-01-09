@@ -227,6 +227,7 @@ fn main() {
                     "floor" => stacks[0].unary(|a| a.floor()),
                     "ceil" => stacks[0].unary(|a| a.ceil()),
                     "factor" => stacks[0].try_unary(|a| a.try_factor()),
+
                     // Trig Functions
                     "sin" => stacks[0].try_unary(|a| a.try_sin(ui.get_info().angle)),
                     "cos" => stacks[0].try_unary(|a| a.try_cos(ui.get_info().angle)),
@@ -234,12 +235,14 @@ fn main() {
                     "asin" | "arcsin" => stacks[0].try_unary(|a| a.try_asin(ui.get_info().angle)),
                     "acos" | "arccos" => stacks[0].try_unary(|a| a.try_acos(ui.get_info().angle)),
                     "atan" | "arctan" => stacks[0].try_unary(|a| a.try_atan(ui.get_info().angle)),
+
                     // Tuple Operations
                     "collect" => stacks[0].try_reduce(|acc, e| acc.try_push(e)),
                     "expand" => stacks[0].try_unary_v(|a| a.try_expand()),
                     "push" => stacks[0].try_binary(|a, b| b.try_push(a)),
                     "unpush" => stacks[0].try_unary_v(|a| a.try_unpush()),
                     "pop" => stacks[0].try_unary_v(|a| a.try_pull()),
+
                     // Tuple / Stats Operations
                     "avg" | "mean" | "amean" | "AM" => stacks[0].unary(|a| a.mean().into()),
                     "gmean" | "GM" => stacks[0].unary(|a| a.geometric_mean().into()),

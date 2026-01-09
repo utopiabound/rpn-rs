@@ -11,9 +11,11 @@
     <p>RPN-rs works with arbitrary precision rational numbers, large precision
       floating point numbers, complex numbers.
       These values can also be collected into <a href="https://en.wikipedia.org/wiki/Matrix_(mathematics)">matrices</a> and <a href="https://en.wikipedia.org/wiki/Tuple">tuples</a>.
-      Numbers can be displayed in 4 different radix modes (base 2, 8, 10, 16).
+      Numbers can be displayed in 5 different radix modes (base 2, 8, 10, 12, 16).
       <!-- Complex numbers can be displayed in either Cartesian or polar
-      form.--></p>
+	   form.--></p>
+
+    <p>RPN-rs attempt to use rational numbers whenever possible since they are arbitrary precision.  Complex numbers are always rendered as floating points.</p>
 
     <p>RPN-rs uses a stack and reverse polish notation to evaluate expressions.
       The stack in RPN-rs is infinite and limited only by available memory.</p>
@@ -54,6 +56,7 @@
       <tr><td>#deg(ree)</td><td><i>N/A</i></td><td colspan=2>Set trigonometry functions to use <a href="https://en.wikipedia.org/wiki/Degree_(angle)">Degrees</a> (360&deg;)</td></tr>
       <tr><td>#rad(ian)</td><td><i>N/A</i></td><td colspan=2>Set trigonometry functions to use <a href="https://en.wikipedia.org/wiki/Radian_(angle)">Radian</a> (2*pi)</td></tr>
       <tr><td>#grad(ian)</td><td><i>N/A</i></td><td colspan=2>Set trigonometry functions to use <a href="https://en.wikipedia.org/wiki/Gradian">Gradian</a> (400&deg;)</td></tr>
+
       <tr><th colspan=4>Stack Operations</th></tr>
       <tr><td>clear</td><td><i>all</i></td><td colspan=2>clear stack and history</td></tr>
       <tr><td>drop | del(ete)</td><td>1</td><td colspan=2>Remove first item on stack</td></tr>
@@ -130,7 +133,10 @@
       <tr><th colspan=4>Matrix Operations</th></tr>
       <tr><td>det | determinant</td><td>1</td><td>Calculate the <a href="https://en.wikipedia.org/wiki/Determinant">Determinant</a></td><td><i>det(x)</i></td></tr>
       <tr><td>rref</td><td>1</td><td colspan=2>Find the <a href="https://en.wikipedia.org/wiki/Row_echelon_form#Reduced_row_echelon_form">Reduce Row Echelon Form</a></td></tr>
-      <tr><td>trans | transpose</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Transpose">Transpose</a> the matrix</td><td><i>x^T</i></td></tr>
+      <tr><td>trans(pose)</td><td>1</td><td><a href="https://en.wikipedia.org/wiki/Transpose">Transpose</a> the matrix</td><td><i>x^T</i></td></tr>
+
+      <tr><th colspan=4>Other Operations</th></tr>
+      <tr><td>dms</td><td>1</td><td colspan=2>Convert between <a href="https://en.wikipedia.org/wiki/Decimal_degrees">decimal degrees</a> and (Degree Minutes Seconds)</td></tr>
 
       <tr><th colspan=4>Constants</th></tr>
       <tr><td>i</td><td>0</td><td>Square root of -1</td><td><i>i</i> | <i>./&macr;-1</i></td></tr>
