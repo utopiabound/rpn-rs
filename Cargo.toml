@@ -1,6 +1,6 @@
 [package]
 name = "rpn-rs"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Nathaniel Clark"]
 edition = "2024"
 keywords = [ "fltk", "rpn", "calculator", "tui" ]
