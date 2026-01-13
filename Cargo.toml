@@ -35,4 +35,4 @@ rustyline = "17"
 
 # (Rata)TUI
 crossterm = "0.29"
-ratatui = "0.29"
+ratatui = "0.30"

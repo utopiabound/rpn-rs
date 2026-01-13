@@ -329,7 +329,7 @@ impl From<Float> for Scalar {
         // FLOAT_PRECISION which means it's a floating point rounding
         // error most likely
         if let Some(r) = x.to_rational()
-            && r.denom() < &(Integer::from(1) << FLOAT_PRECISION)
+            && r.denom() < &(Integer::from(1) << (FLOAT_PRECISION - 2))
         {
             Scalar::Int(r)
         } else {
