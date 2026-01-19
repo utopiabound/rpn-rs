@@ -329,7 +329,7 @@ impl From<Float> for Scalar {
         // FLOAT_PRECISION which means it's a floating point rounding
         // error most likely
         if let Some(r) = x.to_rational()
-            && r.denom() < &(Integer::from(1) << (FLOAT_PRECISION - 2))
+            && r.denom() < &(Integer::from(1) << (FLOAT_PRECISION / 4))
         {
             Scalar::Int(r)
         } else {
@@ -358,6 +358,27 @@ fn parse_float(val: &str) -> Result<Float, String> {
     Ok(Float::with_val(FLOAT_PRECISION, v))
 }
 
+// Take finite floating point number and make into rational
+fn parse_real(val: &str) -> Result<Rational, String> {
+    if val.is_empty() {
+        return Ok(Rational::zero());
+    }
+    if let Some((int, real)) = val.split_once('.') {
+        let r_count = real.len() as u32;
+        let all_int = int.to_string() + real;
+        let (f, r, v) = Radix::split_string(&all_int);
+        let v = Integer::parse_radix(format!("{}{v}", if f { "-" } else { "" }), r.into())
+            .map_err(|e| format!("{v}: {e}"))?;
+
+        Ok(Rational::from((
+            v.complete(),
+            Integer::from(i32::from(r)).pow(r_count),
+        )))
+    } else {
+        parse_int(val).map(|x| Rational::from((x, 1)))
+    }
+}
+
 fn parse_int(val: &str) -> Result<Integer, String> {
     let (f, r, v) = Radix::split_string(val);
     let v = Integer::parse_radix(format!("{}{v}", if f { "-" } else { "" }), r.into())
@@ -366,10 +387,9 @@ fn parse_int(val: &str) -> Result<Integer, String> {
 }
 
 fn dms2scalar(x1: Option<&Scalar>, x2: Option<&Scalar>, x3: Option<&Scalar>) -> Scalar {
-    (x1.cloned().unwrap_or_default()
-        + x2.cloned().unwrap_or_default() / 60.into()
-        + x3.cloned().unwrap_or_default() / 3600.into())
-        % 360.into()
+    x1.cloned().unwrap_or_default() % 360.into()
+        + x2.cloned().unwrap_or_default() % 60.into() / 60.into()
+        + x3.cloned().unwrap_or_default() % 60.into() / 3600.into()
 }
 
 fn img2float(v: &str) -> String {
@@ -417,7 +437,7 @@ impl TryFrom<&str> for Scalar {
         } else if value.contains('[') {
             Err("Parsing Matrix as Scalar".to_string())
         } else if value.contains('.') {
-            Ok(Scalar::from(parse_float(value)?))
+            Ok(Scalar::from(parse_real(value)?))
         } else if let Some((numer, denom)) = value.split_once('/') {
             let n = parse_int(numer)?;
             let d = parse_int(denom)?;
@@ -2220,9 +2240,15 @@ impl ops::Rem for Scalar {
         } else {
             match (self, other) {
                 (Scalar::Int(a), Scalar::Int(b)) => {
-                    let fa: Float = Float::with_val(FLOAT_PRECISION, a);
-                    let fb: Float = Float::with_val(FLOAT_PRECISION, b);
-                    Scalar::from(fa % fb)
+                    if a.is_integer() && b.is_integer() {
+                        let (ia, _) = a.into_numer_denom();
+                        let ib = b.numer();
+                        Scalar::from(ia % ib)
+                    } else {
+                        let fa: Float = Float::with_val(FLOAT_PRECISION, a);
+                        let fb: Float = Float::with_val(FLOAT_PRECISION, b);
+                        Scalar::from(fa % fb)
+                    }
                 }
                 (Scalar::Int(a), Scalar::Float(b)) => {
                     let fa: Float = Float::with_val(FLOAT_PRECISION, a);
