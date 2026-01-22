@@ -927,7 +927,7 @@ impl Scalar {
         rational: bool,
         width: Option<usize>,
     ) -> String {
-        //eprintln!("{self:?} digits:{digits:?}");
+        //eprintln!("{self:?} digits:{width:?}");
         match self {
             Scalar::Int(x) => {
                 if !rational && !x.is_integer() {
@@ -1077,37 +1077,42 @@ impl Value {
                 }
             }
             Value::Matrix(x) => {
-                let mut output = "[".to_owned();
+                let mut output = "[ ".to_owned();
                 let rowmax = x.rows();
+                // items per row
                 let mut len = if flat { rowmax * x.cols() } else { x.cols() };
-                let mut d = digits.map(|x| x - 1 - len - if flat { rowmax * 2 } else { 2 });
-                let minwidth = digits.map(|x| max(x / len, 2)).unwrap_or_default();
+
+                // Total row digits - 1 space per item - len("[ ") - 2 per row (for ";" or "]")
+                let mut row_digits = digits.map(|x| x - len - 2 - if flat { rowmax } else { 1 });
+
+                let minwidth = row_digits.map(|x| max(x / len, 2)).unwrap_or_default();
 
                 for i in 0..rowmax {
                     for j in 0..x.cols() {
-                        let n = d.map(|x| max(x / len, minwidth));
+                        let n = row_digits.map(|x| max(x / len, minwidth));
                         let s = x[i][j].to_string_radix(radix, rational, n);
 
-                        output += " ";
                         output += &s;
+                        output += " ";
 
                         len -= 1;
-                        if let Some(x) = d
-                            && x > s.len()
-                        {
-                            d = Some(x - s.len() - 1);
-                        } else {
-                            d = Some(0);
+                        if let Some(x) = row_digits {
+                            if x > s.len() {
+                                row_digits = Some(x - s.len());
+                            } else {
+                                row_digits = Some(0);
+                            }
                         }
                     }
+
                     output += if i == rowmax - 1 {
-                        " ]"
+                        "]"
                     } else if flat {
-                        " ;"
+                        "; "
                     } else {
                         len = x.cols();
-                        d = digits.map(|x| x - 1 - len);
-                        " ;\n"
+                        row_digits = digits.map(|x| x - 2 - len);
+                        ";\n"
                     };
                 }
                 output
@@ -2756,5 +2761,13 @@ mod test {
         assert_eq!(a.clone().ceil(), Value::try_from("( -4 2-5i 2 )").unwrap());
         assert_eq!(a.clone().round(), Value::try_from("( -5 2-5i 2 )").unwrap());
         assert_eq!(a.trunc(), Value::try_from("( -4 2-5i 1 )").unwrap());
+    }
+
+    #[test]
+    fn to_string_scalar() {
+        let a = Rational::from((4, 3));
+
+        assert_eq!(a.digits(Radix::default()), 3);
+        assert_eq!(a.digits(Radix::Hex), 7);
     }
 }
