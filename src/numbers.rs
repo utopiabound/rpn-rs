@@ -392,6 +392,17 @@ fn dms2scalar(x1: Option<&Scalar>, x2: Option<&Scalar>, x3: Option<&Scalar>) -> 
         + x3.cloned().unwrap_or_default() % 60.into() / 3600.into()
 }
 
+fn scalar2dms(xs: &Scalar) -> Vec<Scalar> {
+    let mut m = vec![Scalar::zero(), Scalar::zero(), Scalar::zero()];
+    m[0] = xs.clone().trunc() % Scalar::from(360);
+    let f = xs.abs_sub(&m[0]) * Scalar::from(60);
+    m[1] = f.clone().trunc();
+    let f = (f - m[1].clone()) * Scalar::from(60);
+    m[2] = f;
+
+    m
+}
+
 fn img2float(v: &str) -> String {
     let v = v.trim().trim_end_matches('i').trim();
     match v {
@@ -1229,15 +1240,7 @@ impl Value {
 
     pub(crate) fn try_dms_conv(&self) -> Result<Self, String> {
         match &self {
-            Value::Scalar(x) => {
-                let mut m = vec![Scalar::zero(), Scalar::zero(), Scalar::zero()];
-                m[0] = x.clone().trunc() % Scalar::from(360);
-                let f = x.abs_sub(&m[0]) * Scalar::from(60);
-                m[1] = f.clone().trunc();
-                let f = (f - m[1].clone()) * Scalar::from(60);
-                m[2] = f;
-                Ok(m.into())
-            }
+            Value::Scalar(x) => Ok(scalar2dms(x).into()),
             Value::Tuple(t) => {
                 if t.len() > 3 {
                     Err(format!("Tuple too long ({} > 3)", t.len()))
@@ -1246,14 +1249,36 @@ impl Value {
                 }
             }
             Value::Matrix(m) => {
-                if m.rows() != 1 || m.cols() > 3 {
+                if m.cols() > 3 {
                     Err(format!(
-                        "Matrix of incorrect size [{}x{}] expected [1x3]",
+                        "Matrix of incorrect size [{}x{}] expected [1x3] or [2x3]",
                         m.rows(),
                         m.cols()
                     ))
                 } else {
-                    Ok(dms2scalar(m[0].first(), m[0].get(1), m[0].get(2)).into())
+                    match m.rows() {
+                        1 => Ok(dms2scalar(m[0].first(), m[0].get(1), m[0].get(2)).into()),
+                        2 if m.cols() > 1 => Ok(libmat::matrix! {
+                            { dms2scalar(m[0].first(), m[0].get(1), m[0].get(2)) },
+                            { dms2scalar(m[1].first(), m[1].get(1), m[1].get(2)) }
+                        }
+                        .into()),
+                        2 => Matrix::from_vec(
+                            2,
+                            3,
+                            scalar2dms(&m[0][0])
+                                .into_iter()
+                                .chain(scalar2dms(&m[1][0]))
+                                .collect::<Vec<_>>(),
+                        )
+                        .map(|x| x.into())
+                        .map_err(|e| format!("Failed to build 2x3 matrix: {e}")),
+                        _ => Err(format!(
+                            "Matrix of incorrect size [{}x{}] expected [1x3] or [2x3]",
+                            m.rows(),
+                            m.cols()
+                        )),
+                    }
                 }
             }
         }
