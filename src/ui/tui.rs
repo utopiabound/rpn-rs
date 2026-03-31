@@ -130,11 +130,7 @@ fn ui(info: &mut CalcInfo, f: &mut Frame) {
         let inner = block.inner(area);
         let text = help_text(inner.width as usize);
         info.help_height = inner.height;
-        info.help_max_scroll = text
-            .lines()
-            .count()
-            .checked_sub(inner.height.into())
-            .unwrap_or_default() as u16;
+        info.help_max_scroll = text.lines().count().saturating_sub(inner.height.into()) as u16;
         let p = Paragraph::new(text).scroll((info.help_scroll, 0));
         f.render_widget(Clear, area);
         f.render_widget(block, area);
@@ -215,15 +211,13 @@ impl CalcDisplay for TuiCalcUI {
                                 )
                             }
                             KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('y') => {
-                                self.info.help_scroll =
-                                    self.info.help_scroll.checked_sub(1).unwrap_or_default()
+                                self.info.help_scroll = self.info.help_scroll.saturating_sub(1)
                             }
                             KeyCode::Char('u') => {
                                 self.info.help_scroll = self
                                     .info
                                     .help_scroll
-                                    .checked_sub(self.info.help_height / 2)
-                                    .unwrap_or_default()
+                                    .saturating_sub(self.info.help_height / 2)
                             }
                             KeyCode::PageDown
                             | KeyCode::Char(' ')
@@ -241,11 +235,8 @@ impl CalcDisplay for TuiCalcUI {
                                 )
                             }
                             KeyCode::PageUp | KeyCode::Char('b') | KeyCode::Char('w') => {
-                                self.info.help_scroll = self
-                                    .info
-                                    .help_scroll
-                                    .checked_sub(self.info.help_height)
-                                    .unwrap_or_default()
+                                self.info.help_scroll =
+                                    self.info.help_scroll.saturating_sub(self.info.help_height)
                             }
                             KeyCode::End | KeyCode::Char('G') | KeyCode::Char('F') => {
                                 self.info.help_scroll = self.info.help_max_scroll

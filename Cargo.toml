@@ -17,7 +17,7 @@ log = "0.4"
 num-traits = "0.2"
 regex = "1"
 rug = { version = "1", features = ["num-traits"] }
-strum_macros = "0.27"
+strum_macros = "0.28"
 
 # GUI
 # Use this line to just build with fltk statically
@@ -31,7 +31,7 @@ copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 html2text = "0.16"
 
 # CLI
-rustyline = "17"
+rustyline = "18"
 
 # (Rata)TUI
 crossterm = "0.29"

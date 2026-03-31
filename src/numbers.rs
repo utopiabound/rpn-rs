@@ -540,9 +540,7 @@ impl Scalar {
         match self {
             Scalar::Int(x) => Scalar::from(Float::with_val(FLOAT_PRECISION, x).log2()),
             Scalar::Float(x) => Scalar::from(x.log2()),
-            Scalar::Complex(x) => {
-                Scalar::from(x.log10() / Complex::with_val(FLOAT_PRECISION, (2, 0)).log10())
-            }
+            Scalar::Complex(x) => Scalar::from(x.log2()),
         }
     }
 
