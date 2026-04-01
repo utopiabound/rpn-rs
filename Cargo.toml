@@ -36,3 +36,6 @@ rustyline = "18"
 # (Rata)TUI
 crossterm = "0.29"
 ratatui = { version = "0.30", default-features = false, features = ["crossterm", "layout-cache"] }
+
+[dev-dependencies]
+test-case = "3"
