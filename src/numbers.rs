@@ -328,7 +328,9 @@ impl From<Float> for Scalar {
         // Attempt to make Rational from Integer. Calling
         // x.to_rational() will result in aweful franctions for
         // numbers that don't fit into Floats nicely.
-        if let Some(xi) = x.to_integer() {
+        if x.is_integer()
+            && let Some(xi) = x.to_integer()
+        {
             Scalar::Int(Rational::from(xi))
         } else {
             Scalar::Float(x)
@@ -339,7 +341,7 @@ impl From<Float> for Scalar {
 impl From<Complex> for Scalar {
     fn from(x: Complex) -> Self {
         if x.imag().is_zero() {
-            Scalar::from(x.real().clone())
+            Scalar::from(x.into_real_imag().0)
         } else {
             Scalar::Complex(x)
         }
