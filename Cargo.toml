@@ -1,6 +1,7 @@
 [package]
 name = "rpn-rs"
-version = "0.1.8"
+# Also desktop/Info.plist
+version = "0.1.9"
 authors = ["Nathaniel Clark"]
 edition = "2024"
 keywords = [ "fltk", "rpn", "calculator", "tui" ]
