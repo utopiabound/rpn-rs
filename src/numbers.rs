@@ -1679,6 +1679,11 @@ impl Value {
         let f = Float::with_val(FLOAT_PRECISION, 1);
         Value::Scalar(Scalar::from(f.exp()))
     }
+    /// Golden Ratio
+    pub(crate) fn phi() -> Self {
+        let a = Scalar::from(5).pow(Scalar::from(2).inv()) + 1.into();
+        Value::Scalar(a / Scalar::from(2))
+    }
     pub(crate) fn pi() -> Self {
         Value::Scalar(Scalar::from(Float::with_val(FLOAT_PRECISION, Constant::Pi)))
     }

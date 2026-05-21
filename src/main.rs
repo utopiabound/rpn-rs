@@ -277,6 +277,10 @@ fn main() {
                         stacks[0].push(Value::pi());
                         Return::Ok
                     }
+                    "phi" | "golden" => {
+                        stacks[0].push(Value::phi());
+                        Return::Ok
+                    }
                     "G" | "catalan" => {
                         stacks[0].push(Value::catalan());
                         Return::Ok
