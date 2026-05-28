@@ -2798,4 +2798,14 @@ mod test {
         assert_eq!(a.digits(Radix::default()), 3);
         assert_eq!(a.digits(Radix::Hex), 7);
     }
+
+    #[test]
+    fn value_dms() {
+        let a = Value::try_from("[ 48 51 39.96 ; 2 20 8.88 ]").unwrap();
+
+        assert_eq!(
+            a.try_dms_conv().unwrap(),
+            Value::try_from("[ 48.8611 ; 2.3358 ]").unwrap()
+        );
+    }
 }
