@@ -48,21 +48,11 @@ pub(crate) enum Message {
     Input(String),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub(crate) struct Info {
     pub(crate) radix: Radix,
     pub(crate) rational: bool,
     pub(crate) angle: Angle,
-}
-
-impl Default for Info {
-    fn default() -> Self {
-        Self {
-            radix: Radix::default(),
-            rational: true,
-            angle: Angle::default(),
-        }
-    }
 }
 
 pub(crate) trait CalcDisplay {

@@ -412,8 +412,9 @@ impl StackOutput {
             .with_size(width, height)
             .center_of_parent();
         let data: Rc<RefCell<Vec<Value>>> = Rc::from(RefCell::from(vec![]));
-        let radix = Rc::from(RefCell::from(Radix::Decimal));
-        let rational = Rc::from(RefCell::from(true));
+        let info = Info::default();
+        let radix = Rc::from(RefCell::from(info.radix));
+        let rational = Rc::from(RefCell::from(info.rational));
 
         table.set_row_header(true);
         //table.set_row_resize(false);

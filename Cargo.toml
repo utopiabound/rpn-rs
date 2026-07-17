@@ -11,7 +11,7 @@ readme = "README.md"
 
 [dependencies]
 clap = { version = "4", features = ["derive", "wrap_help"] }
-itertools = "0.14"
+itertools = "0.15"
 #libmat = "0.3"
 libmat = { git = "https://github.com/utopiabound/libmat", branch = "rref" }
 log = "0.4"
@@ -19,7 +19,7 @@ num-traits = "0.2"
 regex = "1"
 rug = { version = "1", features = ["num-traits"] }
 # this matches strum from ratatui
-strum_macros = "0.27"
+strum_macros = "0.28"
 
 # GUI
 # Use this line to just build with fltk statically
