@@ -226,9 +226,6 @@ impl CalcDisplay for FltkCalcDisplay {
         menu.find_item(table.get_radix().to_menu())
             .expect("Failed to find Decimal Radix")
             .set();
-        menu.find_item(MENU_RATIONAL)
-            .expect("Failed to find Rational Option")
-            .set();
         menu.find_item(Angle::default().to_menu())
             .expect("Failed to find Degrees Option")
             .set();
