@@ -494,6 +494,40 @@ impl TryFrom<&str> for Value {
                 .map(Scalar::try_from)
                 .collect::<Result<Vec<Scalar>, String>>()?
                 .into())
+        } else if value.contains('°') {
+            // 42°21′45″N 71°21′41″W
+            let re =
+                Regex::new(r#"(\d+)[^\d\pL](\d+)[^\d\pL]([\d\.]+)[^\d\pL][NSnsEeWw]?"#).unwrap();
+            let coordinates = value
+                .split_whitespace()
+                .filter_map(|v| re.captures(v))
+                .map(|cap| {
+                    Ok([
+                        cap.get(1)
+                            .map(|x| Scalar::try_from(x.as_str()))
+                            .transpose()?
+                            .unwrap_or_default(),
+                        cap.get(2)
+                            .map(|x| Scalar::try_from(x.as_str()))
+                            .transpose()?
+                            .unwrap_or_default(),
+                        cap.get(3)
+                            .map(|x| Scalar::try_from(x.as_str()))
+                            .transpose()?
+                            .unwrap_or_default(),
+                    ])
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+
+            let rows = coordinates.len();
+
+            if rows > 0 {
+                Matrix::from_vec(rows, 3, coordinates.into_iter().flatten().collect())
+                    .map(|x| x.into())
+                    .map_err(|e| e.to_string())
+            } else {
+                Err("Failed to parse Coordinates".to_string())
+            }
         } else {
             Scalar::try_from(value).map(|s| s.into())
         }
@@ -2806,6 +2840,26 @@ mod test {
         assert_eq!(
             a.try_dms_conv().unwrap(),
             Value::try_from("[ 48.8611 ; 2.3358 ]").unwrap()
+        );
+    }
+
+    #[test]
+    fn value_from_dms() {
+        let xs = r#"42°21′45″N"#;
+
+        assert_eq!(
+            Value::try_from(xs).unwrap(),
+            Value::try_from("[ 42 21 45 ]").unwrap(),
+        );
+    }
+
+    #[test]
+    fn value_from_dms2() {
+        let xs = r#"42°21′45″N 71°21′41.5″W"#;
+
+        assert_eq!(
+            Value::try_from(xs).unwrap(),
+            Value::try_from("[ 42 21 45; 71 21 41.5 ]").unwrap(),
         );
     }
 }
