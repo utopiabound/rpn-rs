@@ -1,5 +1,5 @@
 /target
 *~
 /rpn-rs.app
-/.DS_Store
+.DS_Store
 /Cargo.lock
