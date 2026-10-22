@@ -224,10 +224,10 @@ impl CalcDisplay for FltkCalcDisplay {
 
         // Set Menu Defaults
         menu.find_item(table.get_radix().to_menu())
-            .expect("Failed to find Decimal Radix")
+            .ok_or("Failed to find Decimal Radix")?
             .set();
         menu.find_item(Angle::default().to_menu())
-            .expect("Failed to find Degrees Option")
+            .ok_or("Failed to find Degrees Option")?
             .set();
 
         let mut input = Input::default().with_size(width, in_h);
@@ -290,10 +290,10 @@ impl CalcDisplay for FltkCalcDisplay {
                     self.angle = angle;
                 }
                 FltkMessage::Rational => {
-                    let item = self
-                        .menu
-                        .find_item(MENU_RATIONAL)
-                        .expect("Failed to find Rational Option");
+                    let Some(item) = self.menu.find_item(MENU_RATIONAL) else {
+                        self.error.set_value("Failed to find Rational Menu");
+                        continue;
+                    };
                     self.table.set_rational(item.value());
                     self.table.redraw();
                 }
@@ -335,28 +335,37 @@ impl CalcDisplay for FltkCalcDisplay {
         let old_info = self.get_info();
         if old_info.radix != info.radix {
             self.table.set_radix(info.radix);
-            self.menu
-                .find_item(old_info.radix.to_menu())
-                .expect("failed to find old Radix menu")
-                .clear();
-            self.menu
-                .find_item(info.radix.to_menu())
-                .expect("Failed to find new Radix Menu")
-                .set();
+            match self.menu.find_item(old_info.radix.to_menu()) {
+                Some(mut m) => m.clear(),
+                None => self.set_error(Some(format!(
+                    "failed to find old Radix menu: {}",
+                    old_info.radix
+                ))),
+            }
+            match self.menu.find_item(info.radix.to_menu()) {
+                Some(mut m) => m.set(),
+                None => self.set_error(Some(format!(
+                    "failed to find new Radix menu: {}",
+                    info.radix
+                ))),
+            }
         }
         if old_info.rational != info.rational {
             self.table.set_rational(info.rational);
-            let mut item = self
-                .menu
-                .find_item(MENU_RATIONAL)
-                .expect("Failed to find Rational Option");
-            if info.rational {
-                item.set();
-            } else {
-                item.clear();
+            match self.menu.find_item(MENU_RATIONAL) {
+                Some(mut item) => {
+                    if info.rational {
+                        item.set();
+                    } else {
+                        item.clear();
+                    }
+                }
+                None => self.set_error(Some(format!(
+                    "Failed to find Rational Option: {MENU_RATIONAL}"
+                ))),
             }
         }
-        // @@
+
         self.angle = info.angle;
     }
 
@@ -423,7 +432,11 @@ impl StackOutput {
         table.make_resizable(true);
         let d2 = data.clone();
         table.resize_callback(move |s, _x, _y, width, height| {
-            let first = d2.borrow().last().map(|x| x.lines() as i32).unwrap_or(1);
+            let first = d2
+                .borrow()
+                .last()
+                .map(|x| i32::try_from(x.lines()).unwrap_or(i32::MAX))
+                .unwrap_or(1);
             let rc = row_count(height, first);
             s.set_rows(rc);
             let first_rh = first * ROW_HEIGHT;
@@ -454,7 +467,7 @@ impl StackOutput {
                     data_c
                         .borrow()
                         .last()
-                        .map(|x| x.lines() as i32)
+                        .map(|x| i32::try_from(x.lines()).unwrap_or(i32::MAX))
                         .unwrap_or(1),
                 );
                 if r != s.rows() {
@@ -479,7 +492,9 @@ impl StackOutput {
             } // Row titles
             table::TableContext::Cell => {
                 let total_rows = t.rows();
-                let rn = (data_c.borrow().len() as i32) - total_rows + row;
+
+                let rn =
+                    (i32::try_from(data_c.borrow().len())).unwrap_or(i32::MAX) - total_rows + row;
                 draw::set_font(enums::Font::Screen, 18);
                 let digits = w as usize / draw::char_width('m') as usize;
                 let value = if col != 0 || rn < 0 {
@@ -547,8 +562,9 @@ impl StackOutput {
         if x1 < 0 {
             return Err("No Selection".to_string());
         }
-        let total_rows = self.table.borrow().rows();
-        let len = self.data.borrow().len() as i32;
+        let x1 = x1 as isize;
+        let total_rows = self.table.borrow().rows() as isize;
+        let len = self.data.borrow().len().cast_signed();
         let rn = len + x1 - total_rows;
         if rn < 0 {
             return Ok("".to_string());

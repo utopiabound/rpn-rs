@@ -6,7 +6,7 @@
 use itertools::{EitherOrBoth, Itertools as _};
 use libmat::mat::Matrix;
 use num_traits::{Inv, Num, One, Signed, Zero};
-use regex::Regex;
+use regex::regex;
 use rug::{
     Complete, Complex, Float, Integer, Rational,
     float::{Constant, Round, Special},
@@ -150,24 +150,24 @@ trait RpnToStringScalar {
 impl RpnToStringScalar for Float {
     fn to_string_scalar_len(&self, radix: Radix, digits: Option<usize>) -> String {
         let (sign, s, exp) = self.to_sign_string_exp(radix.into(), digits);
-        let len = s.len() as i32;
+        let len = s.len();
 
         let s = if let Some(exp) = exp {
             if exp > 0 {
+                let exp = exp as usize;
                 if exp >= len {
                     let s = if let Some(digits) = digits
-                        && exp as usize > digits
+                        && exp > digits
                     {
-                        let (_, s, _) =
-                            self.to_sign_string_exp(radix.into(), Some((exp - len) as usize));
+                        let (_, s, _) = self.to_sign_string_exp(radix.into(), Some(exp - len));
                         s
                     } else {
                         s
                     };
-                    s + &"0".repeat((exp - len) as usize)
+                    s + &"0".repeat(exp - len)
                 } else {
                     let mut v = s;
-                    v.insert(exp as usize, '.');
+                    v.insert(exp, '.');
                     v.trim_end_matches('0').trim_end_matches('.').to_string()
                 }
             } else {
@@ -263,7 +263,7 @@ impl Radix {
 
     // (is_neg, Radix, rest_of_string)
     pub(crate) fn split_string(value: &str) -> (bool, Self, String) {
-        let re = Regex::new(r"^(-)?(0[xXoObBdDzZ])?(.*)").unwrap();
+        let re = regex!(r"^(-)?(0[xXoObBdDzZ])?(.*)");
         let value = value.trim_start_matches('+');
         if let Some(caps) = re.captures(value) {
             (
@@ -496,8 +496,7 @@ impl TryFrom<&str> for Value {
                 .into())
         } else if value.contains('°') {
             // 42°21′45″N 71°21′41″W
-            let re =
-                Regex::new(r#"(\d+)[^\d\pL](\d+)[^\d\pL]([\d\.]+)[^\d\pL][NSnsEeWw]?"#).unwrap();
+            let re = regex!(r#"(\d+)[^\d\pL](\d+)[^\d\pL]([\d\.]+)[^\d\pL][NSnsEeWw]?"#);
             let coordinates = value
                 .split_whitespace()
                 .filter_map(|v| re.captures(v))
@@ -537,7 +536,7 @@ impl TryFrom<&str> for Value {
 impl Num for Scalar {
     type FromStrRadixErr = String;
     fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-        Rational::parse_radix(str, radix as i32)
+        Rational::parse_radix(str, radix.cast_signed())
             .map(|v| Scalar::from(Rational::from(v)))
             .map_err(|e| e.to_string())
     }
@@ -1092,18 +1091,19 @@ impl Value {
             Value::Scalar(x) => x.to_string_radix(radix, rational, digits),
             Value::Tuple(tuple) => {
                 if let Some(digits) = digits {
-                    let mut digits = digits - 3;
-                    let mut len = tuple.len();
+                    let mut digits = digits.cast_signed() - 3;
+                    let mut len = tuple.len().cast_signed();
 
                     let mut output = "( ".to_owned();
                     for x in tuple {
                         let n = (digits / len) - 1;
-                        let s = x.to_string_radix(radix, rational, Some(n));
+                        let s =
+                            x.to_string_radix(radix, rational, (n > 0).then(|| n.cast_unsigned()));
 
                         output += &s;
                         output += " ";
 
-                        digits -= s.len();
+                        digits -= s.len().cast_signed();
                         len -= 1;
                     }
                     output.push(')');

@@ -52,13 +52,15 @@ impl StackOps for Vec<Value> {
     // }
 
     fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return {
-        if self.len() > 1 {
-            let a = self.pop().unwrap();
-            let b = self.pop().unwrap();
-            let res = f(b, a);
-            self.extend(res);
+        if let Some(a) = self.pop() {
+            if let Some(b) = self.pop() {
+                let res = f(b, a);
+                self.extend(res);
 
-            Return::Ok
+                Return::Ok
+            } else {
+                Return::Err("Function requires two arguments on stack".to_owned())
+            }
         } else {
             Return::Noop
         }
@@ -103,15 +105,17 @@ impl StackOps for Vec<Value> {
     }
 
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return {
-        if self.len() > 1 {
-            let a = self.pop().unwrap();
-            let b = self.pop().unwrap();
-            match f(b, a) {
-                Ok(c) => {
-                    self.push(c);
-                    Return::Ok
+        if let Some(a) = self.pop() {
+            if let Some(b) = self.pop() {
+                match f(b, a) {
+                    Ok(c) => {
+                        self.push(c);
+                        Return::Ok
+                    }
+                    Err(e) => Return::Err(e),
                 }
-                Err(e) => Return::Err(e),
+            } else {
+                Return::Err("Function requires two arguments on stack".to_owned())
             }
         } else {
             Return::Noop
@@ -206,17 +210,19 @@ mod tests {
     }
 
     #[test_case(vec![Value::from(1), Value::from(2)], Return::Ok; "Basic Data")]
-    #[test_case(vec![Value::from(1)], Return::Noop; "Not Enough Data")]
+    #[test_case(vec![Value::from(1)], Return::Err("Function requires two arguments on stack".to_owned()); "Not Enough Data")]
     #[test_case(vec![], Return::Noop; "No Data")]
     fn binary_v_data(mut vv: Vec<Value>, rt: Return) {
         let vv2 = vv.clone();
 
         assert_eq!(vv.binary_v(|a, b| vec![a, b]), rt);
-        assert_eq!(vv, vv2);
+        if matches!(rt, Return::Noop | Return::Ok) {
+            assert_eq!(vv, vv2);
+        }
     }
 
     #[test_case(vec![Value::from(1), Value::from(2)], vec![Value::from(3)], Return::Ok; "Basic Data")]
-    #[test_case(vec![Value::from(1)], vec![Value::from(1)], Return::Noop; "Not Enough Data")]
+    #[test_case(vec![Value::from(1)], vec![], Return::Err("Function requires two arguments on stack".to_owned()); "Not Enough Data")]
     #[test_case(vec![], vec![], Return::Noop; "No Data")]
     fn try_binary_okay(mut vv: Vec<Value>, vv2: Vec<Value>, rt: Return) {
         assert_eq!(vv.try_binary(|a, b| a + b), rt);
@@ -224,7 +230,7 @@ mod tests {
     }
 
     #[test_case(vec![Value::from(1), Value::from(2)], vec![], Return::Err("Bad Data".to_string()), "Bad Data"; "Basic Data")]
-    #[test_case(vec![Value::from(1)], vec![Value::from(1)], Return::Noop, "Bad Result"; "Not Enough Data")]
+    #[test_case(vec![Value::from(1)], vec![], Return::Err("Function requires two arguments on stack".to_owned()), "Bad Result"; "Not Enough Data")]
     #[test_case(vec![], vec![], Return::Noop, "Bad Data"; "No Data")]
     fn try_binary_err(mut vv: Vec<Value>, vv2: Vec<Value>, rt: Return, err: &str) {
         assert_eq!(vv.try_binary(|_a, _b| Err(err.to_string())), rt);

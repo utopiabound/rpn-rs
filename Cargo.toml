@@ -33,7 +33,7 @@ copypasta = { version = "0.10", default-features = false, features = [ "x11" ] }
 html2text = "0.17"
 
 # CLI
-rustyline = "18"
+rustyline = "19"
 
 # (Rata)TUI
 crossterm = "0.29"
@@ -41,3 +41,9 @@ ratatui = { version = "0.30", default-features = false, features = ["crossterm",
 
 [dev-dependencies]
 test-case = "3"
+
+[lints.clippy]
+cast_lossless = "warn"
+cast_possible_wrap = "warn"
+unwrap_used = "deny"
+expect_used = "deny"
