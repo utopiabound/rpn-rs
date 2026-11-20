@@ -69,8 +69,8 @@ impl RpnMatrixExt for Matrix<Scalar> {
     fn is_diagonal(&self) -> bool {
         if self.is_square() {
             for i in 0..self.rows() {
-                for j in 0..self.cols() {
-                    if i != j && self[i][j] != Scalar::zero() {
+                for (j, item) in self[i].iter().enumerate().take(self.cols()) {
+                    if i != j && !item.is_zero() {
                         return false;
                     }
                 }
@@ -1064,10 +1064,8 @@ impl Value {
             Value::Tuple(x) => x.is_empty(),
             Value::Matrix(x) => {
                 for i in 0..x.rows() {
-                    for j in 0..x.cols() {
-                        if !x[i][j].is_zero() {
-                            return false;
-                        }
+                    if x[i].iter().take(x.cols()).any(|v| !v.is_zero()) {
+                        return false;
                     }
                 }
                 true
