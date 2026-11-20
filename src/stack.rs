@@ -15,7 +15,6 @@ pub(crate) enum Return {
 pub(crate) trait StackOps {
     fn unary<F: Fn(Value) -> Value>(&mut self, f: F) -> Return;
     fn try_unary<F: Fn(Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
-    //fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return;
     fn try_binary<F: Fn(Value, Value) -> Result<Value, String>>(&mut self, f: F) -> Return;
     fn try_unary_v<F: Fn(Value) -> Result<Vec<Value>, String>>(&mut self, f: F) -> Return;
     fn unary_v<F: Fn(Value) -> Vec<Value>>(&mut self, f: F) -> Return;
@@ -25,6 +24,12 @@ pub(crate) trait StackOps {
         &mut self,
         init: Value,
         f: F,
+    ) -> Return;
+    /// If top stack value is a collection, then run collect funtion, otherwise run fold function on whole stack
+    fn collect_or_try_reduce<C: Fn(Value) -> Value, F: Fn(Value, Value) -> Result<Value, String>>(
+        &mut self,
+        collect: C,
+        fold: F,
     ) -> Return;
 }
 
@@ -38,18 +43,6 @@ impl StackOps for Vec<Value> {
             Return::Noop
         }
     }
-
-    // fn binary<F: Fn(Value, Value) -> Value>(&mut self, f: F) -> Return {
-    //     if self.len() > 1 {
-    //         let a = self.pop().unwrap();
-    //         let b = self.pop().unwrap();
-    //         let c = f(b, a);
-    //         self.push(c);
-    //         Return::Ok
-    //     } else {
-    //         Return::Noop
-    //     }
-    // }
 
     fn binary_v<F: Fn(Value, Value) -> Vec<Value>>(&mut self, f: F) -> Return {
         if let Some(a) = self.pop() {
@@ -146,6 +139,27 @@ impl StackOps for Vec<Value> {
         }
         self.push(acc);
         Return::Ok
+    }
+
+    fn collect_or_try_reduce<
+        C: Fn(Value) -> Value,
+        F: Fn(Value, Value) -> Result<Value, String>,
+    >(
+        &mut self,
+        collect: C,
+        fold: F,
+    ) -> Return {
+        if let Some(acc) = self.pop() {
+            if acc.is_collection() {
+                let c = collect(acc);
+                self.push(c);
+                Return::Ok
+            } else {
+                self.try_fold(acc, fold)
+            }
+        } else {
+            Return::Noop
+        }
     }
 }
 

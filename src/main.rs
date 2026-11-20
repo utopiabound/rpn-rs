@@ -250,9 +250,13 @@ fn main() {
                     "median" => stacks[0].unary(|a| a.median().into()),
                     "gmdn" => stacks[0].unary(|a| a.gmdn()),
                     "sort" => stacks[0].unary(|a| a.sort()),
-                    "sum" => stacks[0].unary(|a| a.sum()),
-                    "prod" | "product" => stacks[0].unary(|a| a.product()),
                     "sd" | "sdev" | "sigma" => stacks[0].unary(|a| a.standard_deviation()),
+
+                    // Hybrid Tuple / Stack Operations
+                    "sum" => stacks[0].collect_or_try_reduce(|a| a.sum(), |acc, e| acc + e),
+                    "prod" | "product" => {
+                        stacks[0].collect_or_try_reduce(|a| a.product(), |acc, e| acc * e)
+                    }
 
                     // Matrix Operations
                     "det" | "determinant" => stacks[0].try_unary(|a| a.try_det()),

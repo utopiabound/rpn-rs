@@ -1075,6 +1075,14 @@ impl Value {
         }
     }
 
+    /// Return true if Value can be multiple Scalar values
+    pub(crate) fn is_collection(&self) -> bool {
+        match self {
+            Value::Scalar(_) => false,
+            Value::Tuple(_) | Value::Matrix(_) => true,
+        }
+    }
+
     pub(crate) fn try_sqrt(self) -> Result<Self, String> {
         self.try_root(2.into())
     }
